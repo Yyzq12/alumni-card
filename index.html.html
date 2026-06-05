@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <meta name="format-detection" content="telephone=no, email=no, adress=no">
+
+    <title>校友卡</title>
+
+    <style>
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif; }
+
+        body { background-color: #EDEBE9; display: flex; flex-direction: column; align-items: center; min-height: 100vh; position: relative; }
+
+        
+
+        /* 微信小程序外壳容器（锁定 iPhone 13 经典显示纵横比） */
+
+        .wx-container { width: 100%; max-width: 414px; background-color: #A82E2E; display: flex; flex-direction: column; align-items: center; padding-bottom: 40px; min-height: 100vh; position: relative; }
+
+        
+
+        /* 微信原版顶栏 1:1 精准复刻 */
+
+        .wx-nav { width: 100%; height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; color: #FFF; font-size: 16px; font-weight: bold; background-color: #A82E2E; position: relative; }
+
+        .wx-capsule { background: rgba(0, 0, 0, 0.12); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 16px; padding: 5px 12px; display: flex; gap: 12px; font-size: 14px; align-items: center; }
+
+        /* 🔒 顶栏隐藏触发区域（连续单击6下即可唤醒控制台） */
+
+        .admin-trigger { position: absolute; top: 0; left: 30%; width: 40%; height: 48px; cursor: pointer; z-index: 99; -webkit-user-select: none; user-select: none; }
+
+        /* ================= 🪪 电子卡片主体 ================= */
+
+        .alumni-card { 
+
+            width: calc(100% - 24px); 
+
+            height: 236px; 
+
+            background-color: #BD262A; 
+
+            background-image: url('card-bg.png'); /* 精准读取裁剪的卡面底图 */
+
+            background-size: 100% 100%; 
+
+            background-repeat: no-repeat;
+
+            border-radius: 12px; 
+
+            overflow: hidden; 
+
+            margin-top: 10px; 
+
+            box-shadow: 0 6px 18px rgba(0,0,0,0.15); 
+
+            position: relative;
+
+        }
+
+        .card-top-area { padding: 22px 20px; position: relative; height: calc(100% - 38px); }
+
+        .card-serial { position: absolute; top: 16px; right: 20px; font-size: 13px; font-family: "Courier New", Courier, monospace; font-weight: bold; color: rgba(255, 255, 255, 0.9); letter-spacing: 0.5px; }
+
+        .card-main-content { display: flex; margin-top: 18px; align-items: flex-start; }
+
+        .avatar-box { width: 84px; height: 110px; background-color: #E3E3E3; border-radius: 2px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid rgba(0,0,0,0.05); }
+
+        
+
+        /* 继承文字行间距与排版位置 */
+
+        .info-fields { margin-left: 20px; font-size: 14px; color: #FFFFFF; line-height: 1.75; letter-spacing: 0.6px; }
+
+        .info-fields p { margin-bottom: 1px; opacity: 0.9; font-weight: 400; }
+
+        
+
+        /* 🎨 强制让所有文本死锁为纯白色，切断浏览器的非法变蓝染色 */
+
+        .info-fields span { font-weight: bold; opacity: 1; margin-left: 2px; color: #FFFFFF !important; text-decoration: none !important; pointer-events: none; }
+
+        
+
+        .card-gold-strip { height: 38px; width: 100%; position: absolute; bottom: 0; left: 0; display: flex; align-items: center; padding-left: 20px; font-size: 11px; color: #8A1A1D; font-weight: bold; letter-spacing: 0.8px; }
+
+        /* ================= 下半部分：二维码与时间白卡 ================= */
+
+        .white-panel { width: calc(100% - 24px); background: #FFFFFF; border-radius: 12px; margin-top: 14px; padding: 24px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+
+        .qr-header-title { font-size: 15px; color: #333333; margin-bottom: 18px; font-weight: bold; letter-spacing: 0.5px; }
+
+        .qr-box-border { width: 205px; height: 205px; background: #FFF; border: 1px solid #E5E5E5; border-radius: 4px; display: flex; align-items: center; justify-content: center; padding: 8px; }
+
+        
+
+        /* 🔒 锁定读取本地截取的固定二维码 */
+
+        .qr-box-border img { width: 100%; height: 100%; object-fit: contain; }
+
+        
+
+        .refresh-lnk { margin-top: 14px; color: #999999; font-size: 13px; display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; }
+
+        .refresh-lnk:active { opacity: 0.6; }
+
+        /* 时间容器（维持原版 16px 圆角高亮条样式） */
+
+        .live-timer-container { width: 100%; background-color: #5C1315; color: #FFFFFF; text-align: center; padding: 13px 0; border-radius: 16px; margin-top: 24px; font-size: 14.5px; font-weight: bold; letter-spacing: 0.5px; transition: opacity 0.1s ease; }
+
+        /* ================= 🛠️ 内置隐藏式多实例控制面板 ================= */
+
+        .admin-panel { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.96); z-index: 999; padding: 20px; color: #fff; overflow-y: auto; }
+
+        .admin-panel.active { display: block; }
+
+        .admin-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+
+        .form-group { margin-bottom: 12px; }
+
+        .form-group label { display: block; font-size: 12px; margin-bottom: 4px; color: #ccc; }
+
+        .form-group input { width: 100%; height: 38px; border: none; border-radius: 4px; padding: 0 10px; font-size: 14px; color: #333; outline: none; }
+
+        .panel-btn { width: 100%; height: 44px; background: #C9262B; color: #fff; border: none; border-radius: 4px; margin-top: 10px; font-weight: bold; font-size: 14px; cursor: pointer; }
+
+        
+
+        /* 🎰 🎲 随机按钮排版与视觉优化样式 */
+
+        .random-badge-btn-block { width: 100%; height: 44px; background: #5C1315; color: #fff; border: 1px solid #C9262B; border-radius: 4px; margin-top: 15px; font-weight: bold; font-size: 14px; cursor: pointer; letter-spacing: 0.5px; }
+
+        .random-badge-btn-block:active { transform: scale(0.99); background: #C9262B; }
+
+    </style>
+
+</head>
+
+<body>
+
+    <div class="wx-container">
+
+        
+
+        <div class="admin-trigger" id="gestureArea"></div>
+
+        
+
+        <div class="wx-nav">
+
+            <span>〈 校友卡</span>
+
+            <div class="wx-capsule"><span>•••</span> <span>●</span></div>
+
+        </div>
+
+        <div class="alumni-card">
+
+            <div class="card-top-area">
+
+                <div class="card-serial" id="v-cardId">JCCUT20160892</div>
+
+                <div class="card-main-content">
+
+                    <div class="avatar-box">
+
+                        <svg width="46" height="46" viewBox="0 0 24 24" fill="#D2D2D2"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5-3.33-8-3.33z"/></svg>
+
+                    </div>
+
+                    <div class="info-fields">
+
+                        <p>姓名：<span id="v-name">唐海林</span></p>
+
+                        <p>学号：<span id="v-stuId">2016211020208</span></p>
+
+                        <p>院系：<span id="v-department">经济与管理学院</span></p>
+
+                        <p>专业：<span id="v-major">财务管理</span></p>
+
+                        <p>毕业年份：<span id="v-gradYear"></span></p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="card-gold-strip">
+
+                <span>● 荆楚理工学院校友会 ALUMNI ASSOCIATION</span>
+
+            </div>
+
+        </div>
+
+        <div class="white-panel">
+
+            <div class="qr-header-title">校友二维码</div>
+
+            <div class="qr-box-border">
+
+                <img id="v-qr" src="qr.png" alt="二维码">
+
+            </div>
+
+            <div class="refresh-lnk" onclick="triggerManualRefresh()">↻ 刷新</div>
+
+            
+
+            <div class="live-timer-container" id="live-clock-bar">当前时间：读取中...</div>
+
+        </div>
+
+    </div>
+
+    <div class="admin-panel" id="adminPanel">
+
+        <div class="admin-panel-header">
+
+            <h3 style="color:#C9262B; font-size:18px;">荆楚理工学院控制台</h3>
+
+        </div>
+
+        
+
+        <div style="background: rgba(199, 38, 43, 0.15); border: 1px solid #C9262B; padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 11px; color: #ffbcbc; line-height: 1.5;">
+
+            <strong>⚠️ 技术演示与娱乐免责提示：</strong><br>
+
+            本项目属于纯前端视觉适配技术原型，仅供个人技术交流与娱乐演示。严禁将分发的专属独立运行链接或源码用于任何形式的冒充欺骗、伪造凭证或其它违反国家法律法规的非法用途。使用者自身承担全部法律责任。
+
+        </div>
+
+        <p style="font-size:12px; color:#aaa; margin-bottom:15px;">此处修改生成的链接互相独立，发送给不同的人可单独运行展示。</p>
+
+        <div class="form-group"><label>右上角卡号</label><input type="text" id="i-cardId" value="JCCUT20160892"></div>
+
+        <div class="form-group"><label>姓名</label><input type="text" id="i-name" value="唐海林"></div>
+
+        <div class="form-group"><label>学号</label><input type="text" id="i-stuId" value="2016211020208"></div>
+
+        <div class="form-group"><label>院系</label><input type="text" id="i-department" value="经济与管理学院"></div>
+
+        <div class="form-group"><label>专业</label><input type="text" id="i-major" value="财务管理"></div>
+
+        <div class="form-group"><label>毕业年份</label><input type="text" id="i-gradYear" value=""></div>
+
+        
+
+        <button class="random-badge-btn-block" onclick="generateRandomStuId()">🎲 随机专业与学号(2016-2020)</button>
+
+        <button class="panel-btn" onclick="generateStandaloneUrl()">生成并复制该用户的专属独立链接</button>
+
+        <button class="panel-btn" style="background:#444;" onclick="closePanel()">关闭控制台</button>
+
+    </div>
+
+    <script>
+
+        let currentConfig = { cardId: "JCCUT20160892", name: "唐海林", stuId: "2016211020208", department: "经济与管理学院", major: "财务管理", gradYear: "" };
+
+        // 🏫 荆楚理工专属专业规律数据库
+
+        const jcMajorDatabase = [
+
+            { dept: "经济与管理学院", major: "财务管理", code: "21102" },
+
+            { dept: "经济与管理学院", major: "大数据与会计", code: "30502" },
+
+            { dept: "医学部", major: "口腔医学（专升本）", code: "21102" },
+
+            { dept: "师范学院", major: "小学教育", code: "40850" },
+
+            { dept: "新能源学院", major: "印刷工程（专升本）", code: "24201" },
+
+            { dept: "数理学院", major: "数学与应用数学", code: "09500" },
+
+            { dept: "艺术学院", major: "环境设计", code: "12050" },
+
+            { dept: "外国语学院", major: "外国语言文学", code: "10500" }
+
+        ];
+
+        // 随机姓名生成库（姓氏+名字随机池）
+
+        const firstNames = ["张", "李", "王", "刘", "陈", "杨", "赵", "黄", "周", "吴", "徐", "孙", "马", "胡", "郭", "林"];
+
+        const lastNames = ["逸飞", "梦溪", "泽宇", "梓涵", "听风", "晓静", "嘉杰", "雨桐", "博远", "子墨", "瑞霖", "思源", "楚菁", "雪珂", "姝慧", "海林"];
+
+        // 解析分布式 URL 参数
+
+        function parseUrlParams() {
+
+            const params = new URLSearchParams(window.location.search);
+
+            Object.keys(currentConfig).forEach(key => {
+
+                const val = params.get(key);
+
+                if (val !== null) { currentConfig[key] = val; document.getElementById('i-' + key).value = val; }
+
+            });
+
+            renderDomData();
+
+        }
+
+        function renderDomData() {
+
+            document.getElementById('v-cardId').innerText = currentConfig.cardId;
+
+            document.getElementById('v-name').innerText = currentConfig.name;
+
+            document.getElementById('v-stuId').innerText = currentConfig.stuId;
+
+            document.getElementById('v-department').innerText = currentConfig.department;
+
+            document.getElementById('v-major').innerText = currentConfig.major;
+
+            document.getElementById('v-gradYear').innerText = currentConfig.gradYear;
+
+        }
+
+        // 🎲 核心全随机池算法：完美适配所有整理出的专业规律与完全随机的姓名组合
+
+        function generateRandomStuId() {
+
+            // 1. 严格锁定年份在 2016 至 2020 之间
+
+            const startYear = Math.floor(Math.random() * (2020 - 2016 + 1)) + 2016;
+
+            
+
+            // 2. 从归纳的荆楚理工数据库中随机抽选一个专业
+
+            const randomMajorMeta = jcMajorDatabase[Math.floor(Math.random() * jcMajorDatabase.length)];
+
+            const fixedCode = randomMajorMeta.code;
+
+            
+
+            // 3. 产生2位随机行政班级号 (01-04班)
+
+            const classNum = String(Math.floor(Math.random() * 4) + 1).padStart(2, '0');
+
+            
+
+            // 4. 产生2位随机座位号 (01-45号之间)
+
+            const seatNum = String(Math.floor(Math.random() * 45) + 1).padStart(2, '0');
+
+            
+
+            // 5. 组合出完美的 13 位真实学号结构
+
+            const finalStuId = `${startYear}${fixedCode}${classNum}${seatNum}`;
+
+            
+
+            // 6. 联动计算毕业年份
+
+            const gradYear = startYear + 4;
+
+            
+
+            // 7. 完全随机姓名流组合（姓氏 + 名字）
+
+            const randomName = firstNames[Math.floor(Math.random() * firstNames.length)] + lastNames[Math.floor(Math.random() * lastNames.length)];
+
+            // 将关联数据同步灌入控制面板的输入框中
+
+            document.getElementById('i-stuId').value = finalStuId;
+
+            document.getElementById('i-name').value = randomName;
+
+            document.getElementById('i-department').value = randomMajorMeta.dept;
+
+            document.getElementById('i-major').value = randomMajorMeta.major;
+
+            document.getElementById('i-gradYear').value = gradYear;
+
+            document.getElementById('i-cardId').value = `JCCUT${startYear}0${Math.floor(Math.random() * 80) + 10}`;
+
+        }
+
+        // ====== 🕰️ 原装稳定北京时钟引擎 ======
+
+        function runClock() {
+
+            const d = new Date();
+
+            const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+
+            const bj = new Date(utc + (3600000 * 8));
+
+            const year = bj.getFullYear();
+
+            const month = String(bj.getMonth() + 1).padStart(2, '0');
+
+            const day = String(bj.getDate()).padStart(2, '0');
+
+            const h = String(bj.getHours()).padStart(2, '0');
+
+            const m = String(bj.getMinutes()).padStart(2, '0');
+
+            const s = String(bj.getSeconds()).padStart(2, '0');
+
+            document.getElementById('live-clock-bar').innerText = `当前时间：${year}年${month}月${day}日 ${h}:${m}:${s}`;
+
+        }
+
+        function triggerManualRefresh() {
+
+            const timerBar = document.getElementById('live-clock-bar');
+
+            timerBar.style.opacity = '0.3';
+
+            runClock();
+
+            setTimeout(() => { timerBar.style.opacity = '1'; }, 100);
+
+        }
+
+        function generateStandaloneUrl() {
+
+            const newParams = new URLSearchParams();
+
+            Object.keys(currentConfig).forEach(key => { newParams.set(key, document.getElementById('i-' + key).value); });
+
+            const standaloneUrl = window.location.origin + window.location.pathname + '?' + newParams.toString();
+
+            navigator.clipboard.writeText(standaloneUrl).then(() => { alert('实例分发成功！该用户的专属运行网址已成功复制到您的剪贴板。'); window.location.href = standaloneUrl; });
+
+        }
+
+        function closePanel() { document.getElementById('adminPanel').classList.remove('active'); }
+
+        // ======================= 🔒 单击顶部 6 下触发进入控制面板 =======================
+
+        const gestureArea = document.getElementById('gestureArea');
+
+        let clickCount = 0; 
+
+        let lastClickTime = 0;
+
+        gestureArea.addEventListener('click', function(e) {
+
+            e.preventDefault(); 
+
+            const now = Date.now();
+
+            if (now - lastClickTime > 500) { clickCount = 0; }
+
+            lastClickTime = now; 
+
+            clickCount++;
+
+            if (clickCount === 6) { 
+
+                document.getElementById('adminPanel').classList.add('active'); 
+
+                clickCount = 0; 
+
+            }
+
+        });
+
+        gestureArea.addEventListener('touchstart', function(e) {
+
+            const now = Date.now();
+
+            if (now - lastClickTime > 500) { clickCount = 0; }
+
+            lastClickTime = now;
+
+            clickCount++;
+
+            if (clickCount === 6) {
+
+                e.preventDefault();
+
+                document.getElementById('adminPanel').classList.add('active');
+
+                clickCount = 0;
+
+            }
+
+        });
+
+        parseUrlParams(); 
+
+        runClock(); 
+
+        setInterval(runClock, 1000); 
+
+    </script>
+
+</body>
+
+</html>
+
