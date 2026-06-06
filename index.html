@@ -121,9 +121,13 @@
         .form-group input { width: 100%; height: 38px; border: none; border-radius: 4px; padding: 0 10px; font-size: 14px; color: #333; outline: none; }
         .panel-btn { width: 100%; height: 44px; background: #C9262B; color: #fff; border: none; border-radius: 4px; margin-top: 10px; font-weight: bold; font-size: 14px; cursor: pointer; }
         .random-badge-btn-block { width: 100%; height: 44px; background: #5C1315; color: #fff; border: 1px solid #C9262B; border-radius: 4px; margin-top: 15px; font-weight: bold; font-size: 14px; cursor: pointer; }
+        
+        /* 📖 使用说明书模块增强样式 */
         .help-doc-box { background: rgba(255, 255, 255, 0.08); border: 1px dashed rgba(255, 255, 255, 0.2); padding: 14px; border-radius: 6px; margin-top: 20px; font-size: 12.5px; line-height: 1.6; color: #e0e0e0; }
-        .help-doc-box h4 { color: #ffbcbc; margin-bottom: 8px; font-size: 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 4px; }
-        .help-doc-box ol { padding-left: 18px; margin-bottom: 10px; }
+        .help-doc-box h4 { color: #ff9f43; margin-bottom: 8px; font-size: 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 4px; font-weight: bold; }
+        .help-doc-box ul, .help-doc-box ol { padding-left: 18px; margin-bottom: 12px; }
+        .help-doc-box li { margin-bottom: 4px; }
+        .code-mark { font-family: monospace; background: rgba(0,0,0,0.4); padding: 1px 4px; border-radius: 3px; color: #28a745; margin: 0 2px; }
     </style>
 </head>
 <body>
@@ -173,24 +177,38 @@
             <h3 style="color:#C9262B; font-size:18px;">荆楚理工学院控制台</h3>
         </div>
         
+        <div class="form-group"><label>姓名（系统自动转换为姓名拼音首字母缩写）</label><input type="text" id="i-name" placeholder="请输入姓名（如：张三）"></div>
+        <div class="form-group"><label>学号（作为明面展示，并自动切取后两位用于短ID拼接）</label><input type="text" id="i-stuId" placeholder="请输入完整长学号"></div>
         <div class="form-group"><label>右上角卡号</label><input type="text" id="i-cardId" placeholder="例如：JCCUT20160892"></div>
-        <div class="form-group"><label>姓名</label><input type="text" id="i-name" placeholder="请输入姓名"></div>
-        <div class="form-group"><label>学号</label><input type="text" id="i-stuId" placeholder="请输入学号（作为ID暗号）"></div>
         <div class="form-group"><label>院系</label><input type="text" id="i-department" placeholder="请输入院系名称"></div>
         <div class="form-group"><label>专业</label><input type="text" id="i-major" placeholder="请输入专业名称"></div>
         <div class="form-group"><label>毕业年份</label><input type="text" id="i-gradYear" placeholder="例如：2020"></div>
         
         <button class="random-badge-btn-block" onclick="generateRandomStuId()">🎲 随机生成一套测试数据</button>
-        <button class="panel-btn" onclick="generateStandaloneUrl()">生成并复制该用户的专属独立链接</button>
+        <button class="panel-btn" style="background:#28a745; color:#fff;" onclick="generateStandaloneUrl()">🚀 生成并复制专属短链接和 JSON 代码</button>
         <button class="panel-btn" style="background:#ff9f43; color:#fff;" onclick="resetDeviceLock()">🔓 重置当前用户的设备锁</button>
         <button class="panel-btn" style="background:#444;" onclick="closePanel()">关闭控制台</button>
 
         <div class="help-doc-box">
-            <h4>🔒 已启用高级“硬件动态设备锁”</h4>
+            <h4>📖 后台添加新校友使用指南</h4>
             <ol>
-                <li><strong>防转发机制：</strong> 专属链接在特定的手机微信首次打开后，会自动绑定该手机。如果链接被转发给第二个人，其设备校验失败将无法进入卡片。</li>
-                <li><strong>自助解锁：</strong> 调试期间如需更换手机测试，请在绑定手机上呼出控制台，点击“重置当前用户的设备锁”按钮即可重新解绑。</li>
+                <li><strong>信息填写：</strong> 在上方录入新校友的名字、长学号、卡号等信息，或点击 <span style="color:#ff9f43;">🎲 随机生成</span> 测试。</li>
+                <li><strong>打包复制：</strong> 点击绿色的 <span style="color:#28a745;">🚀 生成并复制</span> 按钮，系统会全自动计算缩写 ID，跳转目标页面，并将生成的配置与独立链接打包复制。</li>
+                <li><strong>粘贴入库：</strong> 复制成功后，回到电脑端，打开项目根目录下的<span class="code-mark">users.json</span>。在最后一条数据的末尾换行，直接按下粘贴（Ctrl + V），即可实现零输入、免排版追加。</li>
             </ol>
+
+            <h4>🔍 短ID生成及 JSON 键值逻辑解释</h4>
+            <ul>
+                <li><strong>短ID算力公式：</strong> 键名舍弃原先的长学号或散列随机密钥，统一改为：<span class="code-mark">姓名拼音首字母 + 真实学号最后两位</span>。例如姓名叫“张三”，完整学号是“20162110202<b>08</b>”，则生成的精简短 ID 钥匙为 <span class="code-mark">zs08</span>。</li>
+                <li><strong>参数效果：</strong> 复制得到的测试专属链接，尾部形如：<span class="code-mark">index.html?id=zs08</span>。</li>
+                <li><strong>高保真还原：</strong> 当持有该链接的手机通过指纹验证进入页面时，电子卡片上的“学号”一栏<b>依然会展示 13 位的完整原始学号</b>，因为完整学号已经高保真存储在 JSON 字段中，实现既缩短了网址，又不破坏卡片美观。</li>
+            </ul>
+
+            <h4>🔒 硬件级动态指纹锁机制</h4>
+            <ul>
+                <li><strong>防转发劫持：</strong> 专属链接在特定的手机微信里首次打开时，会读取屏幕与内核环境算出一个永久指纹锁定。如果链接被转发给第二个人，对方因指纹校验失败会直接被拒之门外，防止泛滥转发。</li>
+                <li><strong>环境重置：</strong> 调试期间，如果需要更换新手机或电脑调试，可以用当前手机在页面里唤出本面板，点击橙色 <span style="color:#ff9f43;">🔓 重置设备锁</span> 按钮，当前 ID 即可在下一台新设备上重新建立首次绑定。</li>
+            </ul>
         </div>
     </div>
 
@@ -198,11 +216,36 @@
         let isCurrentLinkValid = false;
         let currentUserId = "";
 
+        // 🧠 核心轻量化算法：中文字符转换为拼音首字母
+        function getChinesePinyinInitials(str) {
+            if (!str) return "user";
+            let result = "";
+            const dict = {"啊":"a","芭":"b","擦":"c","搭":"d","蛾":"e","发":"f","噶":"g","哈":"h","击":"j","咔":"k","垃":"l","妈":"m","拿":"n","哦":"o","啪":"p","七":"q","然":"r","撒":"s","塌":"t","挖":"w","昔":"x","压":"y","匝":"z"};
+            const keys = Object.keys(dict);
+            
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charAt(i);
+                if (/[a-zA-Z]/.test(char)) {
+                    result += char.toLowerCase();
+                    continue;
+                }
+                let charInit = "x"; 
+                for (let j = 0; j < keys.length - 1; j++) {
+                    if (char.localeCompare(keys[j], 'zh') >= 0 && char.localeCompare(keys[j+1], 'zh') < 0) {
+                        charInit = dict[keys[j]];
+                        break;
+                    }
+                }
+                if(char.localeCompare(keys[keys.length-1], 'zh') >= 0) charInit = "z";
+                result += charInit;
+            }
+            return result || "uid";
+        }
+
         // ================= 📱 生成高精度设备指纹 =================
         function getDeviceFingerprint() {
             const screenInfo = `${window.screen.width}x${window.screen.height}x${window.screen.colorDepth}`;
             const ua = navigator.userAgent;
-            // 简单的哈希函数
             let hash = 0;
             const mixStr = screenInfo + ua;
             for (let i = 0; i < mixStr.length; i++) {
@@ -212,7 +255,7 @@
             return 'DEV-' + Math.abs(hash);
         }
 
-        // ================= 🔒 核心设备锁校验校验 =================
+        // ================= 🔒 核心设备锁校验 =================
         function checkDeviceLock(userId) {
             if (!userId) return false;
             const currentFingerprint = getDeviceFingerprint();
@@ -220,11 +263,9 @@
             const savedFingerprint = localStorage.getItem(storageKey);
 
             if (!savedFingerprint) {
-                // 初次访问，静默自动绑定当前设备
                 localStorage.setItem(storageKey, currentFingerprint);
                 return true;
             } else {
-                // 非初次访问，比对设备指纹是否一致
                 return savedFingerprint === currentFingerprint;
             }
         }
@@ -245,8 +286,6 @@
                 alert('系统提示：未检测到您的校友卡档案激活记录，无法查看电子卡片。');
                 return;
             }
-            
-            // 💡 核心升级：跳转二级页面前，进行物理设备指纹鉴权
             if (!checkDeviceLock(currentUserId)) {
                 alert('安全警告：检测到当前设备环境与绑定的安全设备不一致。为保障账户安全，已限制该设备访问卡片。');
                 return;
@@ -277,7 +316,7 @@
 
         function parseUrlParams() {
             const params = new URLSearchParams(window.location.search);
-            const userId = params.get('id');
+            const userId = params.get('id'); 
             currentUserId = userId;
 
             if (!userId) {
@@ -308,16 +347,18 @@
                         currentConfig = {
                             cardId: user.cardId || "JCCUT000000",
                             name: user.name || "未命名",
-                            stuId: userId,
+                            stuId: user.stuId || "未设定", 
                             department: user.department || "未设定",
                             major: user.major || "未设定",
                             gradYear: user.gradYear || "2020"
                         };
 
-                        Object.keys(currentConfig).forEach(key => {
-                            const inputElement = document.getElementById('i-' + key);
-                            if (inputElement) inputElement.value = currentConfig[key];
-                        });
+                        document.getElementById('i-name').value = currentConfig.name;
+                        document.getElementById('i-stuId').value = currentConfig.stuId;
+                        document.getElementById('i-cardId').value = currentConfig.cardId;
+                        document.getElementById('i-department').value = currentConfig.department;
+                        document.getElementById('i-major').value = currentConfig.major;
+                        document.getElementById('i-gradYear').value = currentConfig.gradYear;
 
                         renderDomData();
                     } else {
@@ -341,7 +382,7 @@
             const randomMajorMeta = jcMajorDatabase[Math.floor(Math.random() * jcMajorDatabase.length)];
             const finalStuId = `${startYear}${randomMajorMeta.code}01${String(Math.floor(Math.random() * 30)).padStart(2, '0')}`;
             document.getElementById('i-stuId').value = finalStuId;
-            document.getElementById('i-name').value = "测试用户";
+            document.getElementById('i-name').value = "张三";
             document.getElementById('i-department').value = randomMajorMeta.dept;
             document.getElementById('i-major').value = randomMajorMeta.major;
             document.getElementById('i-gradYear').value = startYear + 4;
@@ -358,11 +399,34 @@
         function triggerManualRefresh() { runClock(); }
 
         function generateStandaloneUrl() {
-            const userId = document.getElementById('i-stuId').value; 
-            if(!userId) { alert('请输入学号！'); return; }
-            const standaloneUrl = window.location.origin + window.location.pathname + '?id=' + userId;
-            navigator.clipboard.writeText(standaloneUrl).then(() => {
-                alert('专属链接已复制！请确保 users.json 已添加该用户。');
+            const name = document.getElementById('i-name').value.trim();
+            const rawStuId = document.getElementById('i-stuId').value.trim();
+            const cardId = document.getElementById('i-cardId').value.trim();
+            const department = document.getElementById('i-department').value.trim();
+            const major = document.getElementById('i-major').value.trim();
+            const gradYear = document.getElementById('i-gradYear').value.trim();
+
+            if(!name || !rawStuId) { alert('姓名和学号不能为空！'); return; }
+
+            const initials = getChinesePinyinInitials(name);
+            const lastTwoDigits = rawStuId.length >= 2 ? rawStuId.slice(-2) : "00";
+            const computedId = initials + lastTwoDigits; 
+
+            const standaloneUrl = window.location.origin + window.location.pathname + '?id=' + computedId;
+            
+            const jsonTemplate = `"${computedId}": {
+    "name": "${name}",
+    "stuId": "${rawStuId}",
+    "cardId": "${cardId}",
+    "department": "${department}",
+    "major": "${major}",
+    "gradYear": "${gradYear}"
+  }`;
+
+            const finalClipboardText = `专属链接：\n${standaloneUrl}\n\n---------------------------\n以下是直接粘贴进 users.json 文件的代码：\n\n  ${jsonTemplate},`;
+
+            navigator.clipboard.writeText(finalClipboardText).then(() => {
+                alert(`🎉 链接与代码打包成功！\n\n1. 短网址参数已调整为：?id=${computedId}\n2. 生成的【users 格式 JSON】已经复制到剪贴板！可回到电脑上直接进行粘贴留档。`);
                 window.location.href = standaloneUrl;
             });
         }
