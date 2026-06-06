@@ -21,11 +21,11 @@
         /* 大外壳微信背景色 */
         .wx-container { width: 100%; max-width: 414px; background-color: #F7F7F7; display: flex; flex-direction: column; align-items: center; min-height: 100vh; position: relative; }
         
-        /* 🎨 统一顶栏 */
+        /* 🎨 统一顶栏（适配 iPhone 13 刘海屏保护） */
         .wx-nav { 
             width: 100%; 
-            padding-top: env(safe-area-inset-top, 20px); 
-            height: calc(48px + env(safe-area-inset-top, 20px)); 
+            padding-top: env(safe-area-inset-top, 44px); 
+            height: calc(48px + env(safe-area-inset-top, 44px)); 
             display: flex; 
             align-items: center; 
             justify-content: space-between; 
@@ -40,7 +40,7 @@
         }
         .wx-capsule { background: rgba(0, 0, 0, 0.12); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 16px; padding: 5px 12px; display: flex; gap: 12px; font-size: 14px; align-items: center; }
 
-        /* 🔒 顶栏隐藏控制台触发区域 - 修复版：使用 fixed 且 left:50% transform 居中，确保完全覆盖微信大外壳顶栏，绝不漂移 */
+        /* 🔒 iPhone 13 专配顶栏隐藏触发区：加大纵深，确保能穿透刘海屏手势 */
         .admin-trigger { 
             position: fixed; 
             top: 0; 
@@ -48,7 +48,7 @@
             transform: translateX(-50%);
             width: 100%; 
             max-width: 414px; 
-            height: calc(48px + env(safe-area-inset-top, 20px)); 
+            height: calc(60px + env(safe-area-inset-top, 44px)); 
             cursor: pointer; 
             z-index: 99999; 
             -webkit-user-select: none; 
@@ -58,19 +58,20 @@
         }
 
         /* ================= 🌟 一级页面样式 ================= */
-        #page-home { width: 100%; display: flex; flex-direction: column; position: relative; background: #FFF; min-height: calc(100vh - 48px - env(safe-area-inset-top, 20px)); padding-bottom: 80px; }
+        #page-home { width: 100%; display: flex; flex-direction: column; position: relative; background: #FFF; min-height: calc(100vh - 48px - env(safe-area-inset-top, 44px)); padding-bottom: 80px; }
         .home-mock-bg { width: 100%; display: block; object-fit: contain; }
         
-        /* 🎯 精准像素级定位隐藏点击热区 */
+        /* 🎯 【核心重构】百分比动态自适应热区，彻底解决 iPhone 13 缩放错位 */
         .hotspot-alumni-card {
             position: absolute;
-            top: 440px;               
-            left: 25%;                
-            width: 24%;                
-            height: 90px;       
+            top: 61.5%;             /* 基于图片总高度的百分比定位，绝不因手机型号换代而偏离 */      
+            left: 27%;              /* 水平切中第二个图标 */      
+            width: 22%;             /* 完美包裹“校友卡”图标横向范围 */       
+            height: 11.5%;           /* 纵向高度包裹范围 */
             cursor: pointer;
             z-index: 50; 
             -webkit-tap-highlight-color: transparent;
+            /* background: rgba(255, 0, 0, 0.3); */ /* 💡 调试提示：如果线上还想肉眼微调，删掉本行注释即可显示半透明红块 */
         }
 
         /* ================= 🪪 二级页面样式 ================= */
@@ -234,7 +235,6 @@
             window.location.reload();
         }
 
-        // ================= 🔄 降级与安全自救路由判断 =================
         function tryNavigateToCard() {
             if (!isCurrentLinkValid) {
                 const confirmDebug = confirm("【系统提示】\n未检测到您的校友卡激活记录。\n\n💡 调试提示：如果您还没有配置该 ID 的 JSON，点击“确定”将直接使用临时的测试数据进入二级卡片查看效果！");
@@ -267,14 +267,12 @@
 
         let currentConfig = { cardId: "", name: "", stuId: "", department: "", major: "", gradYear: "" };
 
-        // ================= 🔧 修复 GitHub Pages 相对路径读取 =================
         function parseUrlParams() {
             const params = new URLSearchParams(window.location.search);
             const userId = params.get('id'); 
             currentUserId = userId;
             if (!userId) { isCurrentLinkValid = false; return; }
 
-            // 🌟 核心修复：移除斜杠前缀，改用相对路径 'users.json'，适配 GitHub 项目子目录
             fetch('users.json?t=' + Date.now())
                 .then(response => { if (!response.ok) throw new Error(); return response.json(); })
                 .then(data => {
@@ -311,7 +309,6 @@
         }
 
         function generateRandomStuId() {
-            const startYear = 2016;
             document.getElementById('i-stuId').value = "2016211020208";
             document.getElementById('i-name').value = "张三";
             document.getElementById('i-department').value = "经济与管理学院";
