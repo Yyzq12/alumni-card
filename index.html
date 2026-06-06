@@ -21,7 +21,7 @@
         /* 大外壳微信背景色 */
         .wx-container { width: 100%; max-width: 414px; background-color: #F7F7F7; display: flex; flex-direction: column; align-items: center; min-height: 100vh; position: relative; }
         
-        /* 🎨 统一顶栏（一级和二级页面共用） */
+        /* 🎨 统一顶栏 */
         .wx-nav { 
             width: 100%; 
             padding-top: env(safe-area-inset-top, 20px); 
@@ -54,25 +54,23 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* ================= 🌟 一级页面（小程序首页）样式 ================= */
+        /* ================= 🌟 一级页面样式 ================= */
         #page-home { width: 100%; display: flex; flex-direction: column; position: relative; background: #FFF; min-height: calc(100vh - 48px - env(safe-area-inset-top, 20px)); padding-bottom: 80px; }
-        
-        /* 直接通过全屏高精截图作为首页骨架，确保100%还原度 */
         .home-mock-bg { width: 100%; display: block; object-fit: contain; }
         
-        /* 🎯 精准像素级定位：覆盖在原图“校友卡”图标上的隐形点击热区 */
+        /* 🎯 精准像素级定位隐藏点击热区 */
         .hotspot-alumni-card {
             position: absolute;
-            top: 450px;       /* 对应原图中四个金刚区图标的垂直位置线 */
-            left: 27.5%;      /* 精准定位在第二个图标“校友卡”的上方 */
-            width: 20%;       /* 刚好包裹住校友卡图标与文字的宽度 */
+            top: 450px;       
+            left: 27.5%;      
+            width: 20%;       
             height: 90px;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* ================= 🪪 二级页面（电子卡片主体）样式 ================= */
-        #page-card { width: 100%; display: none; flex-direction: column; align-items: center; } /* 默认隐藏 */
+        /* ================= 🪪 二级页面样式 ================= */
+        #page-card { width: 100%; display: none; flex-direction: column; align-items: center; } 
         
         .alumni-card { 
             width: calc(100% - 24px); 
@@ -126,7 +124,6 @@
         .help-doc-box { background: rgba(255, 255, 255, 0.08); border: 1px dashed rgba(255, 255, 255, 0.2); padding: 14px; border-radius: 6px; margin-top: 20px; font-size: 12.5px; line-height: 1.6; color: #e0e0e0; }
         .help-doc-box h4 { color: #ffbcbc; margin-bottom: 8px; font-size: 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 4px; }
         .help-doc-box ol { padding-left: 18px; margin-bottom: 10px; }
-        .help-tag { background: #C9262B; padding: 1px 5px; border-radius: 3px; font-size: 11px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -142,20 +139,19 @@
 
         <div id="page-home">
             <img class="home-mock-bg" src="home-bg.png" alt="小程序首页">
-            
-            <div class="hotspot-alumni-card" onclick="navigateToCard()"></div>
+            <div class="hotspot-alumni-card" onclick="tryNavigateToCard()"></div>
         </div>
 
         <div id="page-card">
             <div class="alumni-card">
                 <div class="card-top-area">
-                    <div class="card-serial" id="v-cardId">JCCUT20160892</div>
+                    <div class="card-serial" id="v-cardId">--------</div>
                     <div class="info-fields">
-                        <div class="info-row"><div class="info-label">姓名：</div><div class="info-value" id="v-name">唐海林</div></div>
-                        <div class="info-row"><div class="info-label">学号：</div><div class="info-value" id="v-stuId">2016211020208</div></div>
-                        <div class="info-row"><div class="info-label">院系：</div><div class="info-value" id="v-department">经济与管理学院</div></div>
-                        <div class="info-row"><div class="info-label">专业：</div><div class="info-value" id="v-major">财务管理</div></div>
-                        <div class="info-row"><div class="info-label">毕业年份：</div><div class="info-value" id="v-gradYear">2020</div></div>
+                        <div class="info-row"><div class="info-label">姓名：</div><div class="info-value" id="v-name">--</div></div>
+                        <div class="info-row"><div class="info-label">学号：</div><div class="info-value" id="v-stuId">--</div></div>
+                        <div class="info-row"><div class="info-label">院系：</div><div class="info-value" id="v-department">--</div></div>
+                        <div class="info-row"><div class="info-label">专业：</div><div class="info-value" id="v-major">--</div></div>
+                        <div class="info-row"><div class="info-label">毕业年份：</div><div class="info-value" id="v-gradYear">--</div></div>
                     </div>
                 </div>
                 <div class="card-gold-strip"></div>
@@ -176,83 +172,122 @@
         <div class="admin-panel-header">
             <h3 style="color:#C9262B; font-size:18px;">荆楚理工学院控制台</h3>
         </div>
-        <div style="background: rgba(199, 38, 43, 0.15); border: 1px solid #C9262B; padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 11px; color: #ffbcbc; line-height: 1.5;">
-            <strong>⚠️ 技术演示与娱乐免责提示：</strong><br>
-            本项目属于纯前端视觉技术原型，仅供技术交流与娱乐演示。严禁用于任何形式的伪造欺骗或其它违反国家法律的非法用途。使用者自身承担全部责任。
-        </div>
         
-        <div class="form-group"><label>右上角卡号</label><input type="text" id="i-cardId" value="JCCUT20160892"></div>
-        <div class="form-group"><label>姓名</label><input type="text" id="i-name" value="唐海林"></div>
-        <div class="form-group"><label>学号</label><input type="text" id="i-stuId" value="2016211020208"></div>
-        <div class="form-group"><label>院系</label><input type="text" id="i-department" value="经济与管理学院"></div>
-        <div class="form-group"><label>专业</label><input type="text" id="i-major" value="财务管理"></div>
-        <div class="form-group"><label>毕业年份</label><input type="text" id="i-gradYear" value="2020"></div>
+        <div class="form-group"><label>右上角卡号</label><input type="text" id="i-cardId" placeholder="例如：JCCUT20160892"></div>
+        <div class="form-group"><label>姓名</label><input type="text" id="i-name" placeholder="请输入姓名"></div>
+        <div class="form-group"><label>学号</label><input type="text" id="i-stuId" placeholder="请输入学号（作为ID暗号）"></div>
+        <div class="form-group"><label>院系</label><input type="text" id="i-department" placeholder="请输入院系名称"></div>
+        <div class="form-group"><label>专业</label><input type="text" id="i-major" placeholder="请输入专业名称"></div>
+        <div class="form-group"><label>毕业年份</label><input type="text" id="i-gradYear" placeholder="例如：2020"></div>
         
-        <button class="random-badge-btn-block" onclick="generateRandomStuId()">🎲 随机专业与学号(2016-2020)</button>
+        <button class="random-badge-btn-block" onclick="generateRandomStuId()">🎲 随机生成一套测试数据</button>
         <button class="panel-btn" onclick="generateStandaloneUrl()">生成并复制该用户的专属独立链接</button>
+        <button class="panel-btn" style="background:#ff9f43; color:#fff;" onclick="resetDeviceLock()">🔓 重置当前用户的设备锁</button>
         <button class="panel-btn" style="background:#444;" onclick="closePanel()">关闭控制台</button>
 
         <div class="help-doc-box">
-            <h4>📖 全新二级页面数据控制说明</h4>
-            <p style="margin-bottom: 8px; color: #ffbcbc; font-weight: bold;">页面已无缝升级为双级嵌套。远程控制依然通过 <span style="color:#ffda79;">users.json</span> 实现：</p>
+            <h4>🔒 已启用高级“硬件动态设备锁”</h4>
             <ol>
-                <li><strong>默认访问：</strong> 用户通过专属链接访问时，首先停留在精心设计的伪装“首页”。</li>
-                <li><strong>页面路由：</strong> 点击首页的 <span style="color:#ffda79;">“校友卡”</span> 图标，将瞬间平滑切入二级卡片页。点击左上角可退回。</li>
-                <li><strong>链接开通：</strong> 点击上方的生成链接，分发出去即可，机制保持不变。</li>
+                <li><strong>防转发机制：</strong> 专属链接在特定的手机微信首次打开后，会自动绑定该手机。如果链接被转发给第二个人，其设备校验失败将无法进入卡片。</li>
+                <li><strong>自助解锁：</strong> 调试期间如需更换手机测试，请在绑定手机上呼出控制台，点击“重置当前用户的设备锁”按钮即可重新解绑。</li>
             </ol>
         </div>
     </div>
 
     <script>
-        // ================= 🔄 页面路由切换引擎 =================
-        function navigateToCard() {
+        let isCurrentLinkValid = false;
+        let currentUserId = "";
+
+        // ================= 📱 生成高精度设备指纹 =================
+        function getDeviceFingerprint() {
+            const screenInfo = `${window.screen.width}x${window.screen.height}x${window.screen.colorDepth}`;
+            const ua = navigator.userAgent;
+            // 简单的哈希函数
+            let hash = 0;
+            const mixStr = screenInfo + ua;
+            for (let i = 0; i < mixStr.length; i++) {
+                hash = (hash << 5) - hash + mixStr.charCodeAt(i);
+                hash |= 0;
+            }
+            return 'DEV-' + Math.abs(hash);
+        }
+
+        // ================= 🔒 核心设备锁校验校验 =================
+        function checkDeviceLock(userId) {
+            if (!userId) return false;
+            const currentFingerprint = getDeviceFingerprint();
+            const storageKey = `lock_device_${userId}`;
+            const savedFingerprint = localStorage.getItem(storageKey);
+
+            if (!savedFingerprint) {
+                // 初次访问，静默自动绑定当前设备
+                localStorage.setItem(storageKey, currentFingerprint);
+                return true;
+            } else {
+                // 非初次访问，比对设备指纹是否一致
+                return savedFingerprint === currentFingerprint;
+            }
+        }
+
+        function resetDeviceLock() {
+            if (!currentUserId) {
+                alert('未检测到有效用户，无需重置。');
+                return;
+            }
+            localStorage.removeItem(`lock_device_${currentUserId}`);
+            alert(`已成功解除用户 [${currentUserId}] 的设备锁！下次打开该链接的设备将会自动绑定为新主设备。`);
+            window.location.reload();
+        }
+
+        // ================= 🔄 页面安全路由 =================
+        function tryNavigateToCard() {
+            if (!isCurrentLinkValid) {
+                alert('系统提示：未检测到您的校友卡档案激活记录，无法查看电子卡片。');
+                return;
+            }
+            
+            // 💡 核心升级：跳转二级页面前，进行物理设备指纹鉴权
+            if (!checkDeviceLock(currentUserId)) {
+                alert('安全警告：检测到当前设备环境与绑定的安全设备不一致。为保障账户安全，已限制该设备访问卡片。');
+                return;
+            }
+
             document.getElementById('page-home').style.display = 'none';
             document.getElementById('page-card').style.display = 'flex';
             document.getElementById('nav-title').innerText = '校友卡';
-            const backBtn = document.getElementById('nav-back-btn');
-            backBtn.style.visibility = 'visible';
+            document.getElementById('nav-back-btn').style.visibility = 'visible';
         }
 
         function navigateToHome() {
             document.getElementById('page-card').style.display = 'none';
             document.getElementById('page-home').style.display = 'flex';
             document.getElementById('nav-title').innerText = '首页';
-            const backBtn = document.getElementById('nav-back-btn');
-            backBtn.style.visibility = 'hidden';
+            document.getElementById('nav-back-btn').style.visibility = 'hidden';
         }
 
-        // ================= 🛠️ 中心化数据驱动逻辑不变 =================
-        let currentConfig = { cardId: "加载中...", name: "加载中...", stuId: "加载中...", department: "加载中...", major: "加载中...", gradYear: "加载中..." };
+        // ================= 🛠️ 数据处理 =================
+        let currentConfig = { cardId: "", name: "", stuId: "", department: "", major: "", gradYear: "" };
 
         const jcMajorDatabase = [
             { dept: "经济与管理学院", major: "财务管理", code: "21102" },
             { dept: "经济与管理学院", major: "大数据与会计", code: "30502" },
-            { dept: "医学部", major: "口腔医学（专升本）", code: "21102" },
-            { dept: "师范学院", major: "小学教育", code: "40850" },
-            { dept: "新能源学院", major: "印刷工程（专升本）", code: "2420101" }, 
-            { dept: "食品与生物学院", major: "植物科学与技术（专升本）", code: "2420703" }, 
-            { dept: "食品与生物学院", major: "食品科学与工程", code: "2424407" }, 
-            { dept: "数理学院", major: "数学与应用数学", code: "09500" },
-            { dept: "艺术学院", major: "环境设计", code: "12050" },
-            { dept: "外国语学院", major: "外国语言文学", code: "10500" }
+            { dept: "医学部", major: "口腔医学", code: "21102" },
+            { dept: "师范学院", major: "小学教育", code: "40850" }
         ];
-
-        const firstNames = ["张", "李", "王", "刘", "陈", "杨", "赵", "黄", "周", "吴", "徐", "孙", "马", "胡", "郭", "林"];
-        const lastNames = ["逸飞", "梦溪", "泽宇", "梓涵", "听风", "晓静", "嘉杰", "雨桐", "博远", "子墨", "瑞霖", "思源", "楚菁", "雪珂", "海林"];
 
         function parseUrlParams() {
             const params = new URLSearchParams(window.location.search);
             const userId = params.get('id');
+            currentUserId = userId;
 
             if (!userId) {
-                readFormToConfig();
-                renderDomData();
+                isCurrentLinkValid = false;
                 return;
             }
 
             fetch('users.json?t=' + Date.now())
                 .then(response => {
-                    if (!response.ok) throw new Error('数据库网络错误');
+                    if (!response.ok) throw new Error('数据库错误');
                     return response.json();
                 })
                 .then(data => {
@@ -260,15 +295,16 @@
                         const user = data[userId];
 
                         if (user.status === "expired") {
+                            isCurrentLinkValid = false;
                             document.body.innerHTML = `
                                 <div style="text-align:center; padding-top:120px; font-family:-apple-system,sans-serif; color:#666; background:#EDEBE9; min-height:100vh;">
                                     <div style="font-size:60px; margin-bottom:20px;">⚠️</div>
                                     <h3 style="color:#333; font-size:18px;">该校友卡验证链接已失效</h3>
-                                    <p style="font-size:14px; color:#999; margin-top:10px; padding:0 20px;">该链接的使用期限已届满或已被系统管理员注销</p>
                                 </div>`;
                             return;
                         }
 
+                        isCurrentLinkValid = true;
                         currentConfig = {
                             cardId: user.cardId || "JCCUT000000",
                             name: user.name || "未命名",
@@ -285,48 +321,31 @@
 
                         renderDomData();
                     } else {
-                        alert('未在云端检索到学号 [' + userId + '] 的校友卡备案，请核对 users.json！');
-                        readFormToConfig();
-                        renderDomData();
+                        isCurrentLinkValid = false;
                     }
                 })
-                .catch(err => {
-                    console.error('降级读取本地输入:', err);
-                    readFormToConfig();
-                    renderDomData();
-                });
-        }
-
-        function readFormToConfig() {
-            Object.keys(currentConfig).forEach(key => {
-                const inputElement = document.getElementById('i-' + key);
-                if (inputElement) currentConfig[key] = inputElement.value;
-            });
+                .catch(() => { isCurrentLinkValid = false; });
         }
 
         function renderDomData() {
-            document.getElementById('v-cardId').innerText = currentConfig.cardId;
-            document.getElementById('v-name').innerText = currentConfig.name;
-            document.getElementById('v-stuId').innerText = currentConfig.stuId;
-            document.getElementById('v-department').innerText = currentConfig.department;
-            document.getElementById('v-major').innerText = currentConfig.major;
-            document.getElementById('v-gradYear').innerText = currentConfig.gradYear;
+            document.getElementById('v-cardId').innerText = currentConfig.cardId || "--------";
+            document.getElementById('v-name').innerText = currentConfig.name || "--";
+            document.getElementById('v-stuId').innerText = currentConfig.stuId || "--";
+            document.getElementById('v-department').innerText = currentConfig.department || "--";
+            document.getElementById('v-major').innerText = currentConfig.major || "--";
+            document.getElementById('v-gradYear').innerText = currentConfig.gradYear || "--";
         }
 
         function generateRandomStuId() {
-            const startYear = Math.floor(Math.random() * (2020 - 2016 + 1)) + 2016;
+            const startYear = Math.floor(Math.random() * 5) + 2016;
             const randomMajorMeta = jcMajorDatabase[Math.floor(Math.random() * jcMajorDatabase.length)];
-            const fixedCode = randomMajorMeta.code;
-            const classNum = String(Math.floor(Math.random() * 3) + 1).padStart(2, '0');
-            const seatNum = String(Math.floor(Math.random() * 40) + 1).padStart(2, '0');
-            const finalStuId = `${startYear}${fixedCode}${classNum}${seatNum}`;
-            
+            const finalStuId = `${startYear}${randomMajorMeta.code}01${String(Math.floor(Math.random() * 30)).padStart(2, '0')}`;
             document.getElementById('i-stuId').value = finalStuId;
-            document.getElementById('i-name').value = firstNames[Math.floor(Math.random() * firstNames.length)] + lastNames[Math.floor(Math.random() * lastNames.length)];
+            document.getElementById('i-name').value = "测试用户";
             document.getElementById('i-department').value = randomMajorMeta.dept;
             document.getElementById('i-major').value = randomMajorMeta.major;
             document.getElementById('i-gradYear').value = startYear + 4;
-            document.getElementById('i-cardId').value = `JCCUT${startYear}0${Math.floor(Math.random() * 80) + 10}`;
+            document.getElementById('i-cardId').value = `JCCUT${startYear}099`;
         }
 
         function runClock() {
@@ -336,28 +355,21 @@
             document.getElementById('live-clock-bar').innerText = `当前时间：${bj.getFullYear()}年${String(bj.getMonth() + 1).padStart(2, '0')}月${String(bj.getDate()).padStart(2, '0')}日 ${String(bj.getHours()).padStart(2, '0')}:${String(bj.getMinutes()).padStart(2, '0')}:${String(bj.getSeconds()).padStart(2, '0')}`;
         }
 
-        function triggerManualRefresh() {
-            const timerBar = document.getElementById('live-clock-bar');
-            timerBar.style.opacity = '0.3'; runClock();
-            setTimeout(() => { timerBar.style.opacity = '1'; }, 100);
-        }
+        function triggerManualRefresh() { runClock(); }
 
         function generateStandaloneUrl() {
             const userId = document.getElementById('i-stuId').value; 
-            if(!userId || userId === "加载中...") {
-                alert('请确保控制台表单内的【学号】不为空！');
-                return;
-            }
+            if(!userId) { alert('请输入学号！'); return; }
             const standaloneUrl = window.location.origin + window.location.pathname + '?id=' + userId;
             navigator.clipboard.writeText(standaloneUrl).then(() => {
-                alert('链接复制成功！\n\n' + standaloneUrl + '\n\n⚠️ 请确保已在 GitHub 的 users.json 中配置此用户数据！');
+                alert('专属链接已复制！请确保 users.json 已添加该用户。');
                 window.location.href = standaloneUrl;
             });
         }
 
         function closePanel() { document.getElementById('adminPanel').classList.remove('active'); }
 
-        // ================= 🔐 隐藏控制台特工连招手势不变 =================
+        // ================= 🔐 隐藏手势控制面板 =================
         const gestureArea = document.getElementById('gestureArea');
         let leftFingerTimer = null; let isLeftLongPressed = false; let rightClickCount = 0; let lastRightClickTime = 0;
 
@@ -368,8 +380,7 @@
                 if (touch.clientX < window.innerWidth / 2) {
                     leftFingerTimer = setTimeout(() => { isLeftLongPressed = true; rightClickCount = 0; }, 800); 
                 }
-            }
-            else if (e.touches.length === 2 && isLeftLongPressed) {
+            } else if (e.touches.length === 2 && isLeftLongPressed) {
                 const touch2 = e.touches[1];
                 if (touch2.clientX > window.innerWidth / 2) {
                     const now = Date.now();
@@ -378,16 +389,31 @@
                     if (rightClickCount === 3) {
                         document.getElementById('adminPanel').classList.add('active');
                         isLeftLongPressed = false; rightClickCount = 0;
-                        if (navigator.vibrate) navigator.vibrate([40, 40, 40]);
                     }
                 }
             }
         }, { passive: false });
 
         gestureArea.addEventListener('touchend', function(e) { if (e.touches.length === 0) { clearTimeout(leftFingerTimer); isLeftLongPressed = false; rightClickCount = 0; } });
-        gestureArea.addEventListener('touchcancel', function() { clearTimeout(leftFingerTimer); isLeftLongPressed = false; rightClickCount = 0; });
 
-        parseUrlParams(); runClock(); setInterval(runClock, 1000); 
+        // ================= 🚫 高级反审查调试机制 =================
+        setInterval(function() { blockDebugger(); }, 500);
+        function blockDebugger() {
+            function doCheck(i) {
+                if (("" + i / i).length !== 1 || i % 20 === 0) {
+                    (function() {}).constructor("debugger")();
+                } else {
+                    (function() {}).constructor("debugger")();
+                }
+                doCheck(++i);
+            }
+            try { doCheck(0); } catch (err) {}
+        }
+
+        navigateToHome(); 
+        parseUrlParams(); 
+        runClock(); 
+        setInterval(runClock, 1000); 
     </script>
 </body>
 </html>
