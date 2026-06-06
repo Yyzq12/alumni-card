@@ -40,7 +40,7 @@
         }
         .wx-capsule { background: rgba(0, 0, 0, 0.12); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 16px; padding: 5px 12px; display: flex; gap: 12px; font-size: 14px; align-items: center; }
 
-        /* 🔒 顶栏隐藏控制台触发区域：固定定位，全页面全时段通过顶栏长按左三击右呼出 */
+        /* 🔒 顶栏隐藏控制台触发区域 */
         .admin-trigger { 
             position: fixed; 
             top: 0; 
@@ -60,17 +60,17 @@
         #page-home { width: 100%; display: flex; flex-direction: column; position: relative; background: #FFF; min-height: calc(100vh - 48px - env(safe-area-inset-top, 20px)); padding-bottom: 80px; }
         .home-mock-bg { width: 100%; display: block; object-fit: contain; }
         
-        /* 🎯 【精准微调】对照截图红圈区域进行像素级覆盖 */
+        /* 🎯 精准像素级定位隐藏点击热区 */
         .hotspot-alumni-card {
             position: absolute;
-            top: 450px;         /* 基于截图金黄色卡片图标的大致高度位置 */      
-            left: 26%;          /* 居中偏左，完美切合第二个图标位置 */      
-            width: 22%;         /* 横向宽度完美覆盖“校友卡”图标与下方文字 */       
-            height: 85px;       /* 纵向高度纵深范围 */
+            top: 440px;         /* 微调至截图红圈中心线 */      
+            left: 25%;          /* 完美覆盖左起第二个图标 */      
+            width: 24%;         /* 略微加宽，提升容错率 */       
+            height: 90px;       
             cursor: pointer;
             z-index: 50; 
             -webkit-tap-highlight-color: transparent;
-            /* background: rgba(255, 0, 0, 0.3); */ /* 💡 调试提示：如果位置有偏移，取消本行注释即可显示半透明红块 */
+            /* background: rgba(255, 0, 0, 0.3); */ /* 💡 调试提示：如果需要肉眼对齐，删掉这行最前面的注释斜杠即可 */
         }
 
         /* ================= 🪪 二级页面样式 ================= */
@@ -195,9 +195,9 @@
         <div class="help-doc-box">
             <h4>📖 后台添加新校友使用指南</h4>
             <ol>
-                <li><strong>信息填写：</strong> 在上方输入信息，或点击 <span style="color:#ff9f43;">🎲 随机生成</span> 测试。</li>
-                <li><strong>打包复制：</strong> 点击绿色的 <span style="color:#28a745;">🚀 生成并复制</span> 按钮，系统自动计算缩写 ID 并打包复制。</li>
-                <li><strong>粘贴入库：</strong> 在电脑端打开根目录下的<span class="code-mark">users.json</span>，在倒数第二行粘贴（Ctrl + V）即可。</li>
+                <li><strong>信息填写：</strong> 在上方输入信息，或点击随机生成测试。</li>
+                <li><strong>打包复制：</strong> 点击绿色的生成并复制按钮，系统自动计算缩写 ID 并打包复制。</li>
+                <li><strong>粘贴入库：</strong> 在电脑端打开根目录下的 <span class="code-mark">users.json</span> 粘贴即可。</li>
             </ol>
         </div>
     </div>
@@ -267,21 +267,38 @@
             window.location.reload();
         }
 
-        // ================= 🛡️ 核心改动：精准路由与拦截警告逻辑 =================
+        // ================= 🔄 完美放行防卡死路由核心机制 =================
         function tryNavigateToCard() {
-            // 拦截 1：如果不是指定参数链接进入的，或者 users.json 里压根查不到这个 ID
+            // 🚨 【安全自救触发】如果没有携带 id 参数或者本地跨域拦截读取失败
             if (!isCurrentLinkValid) {
-                alert('系统提示：未检测到您的校友卡档案激活记录，请使用学校发放的专属验证链接访问。');
+                const confirmDebug = confirm("【系统提示】\n未检测到您的校友卡激活记录。\n\n💡 调试小助手：检测到您当前处于本地或直接打开环境，是否使用默认的“张三”测试数据强行进入卡片页面查看效果？");
+                if (confirmDebug) {
+                    // 强行填充张三的数据供效果预览
+                    currentConfig = {
+                        cardId: "JCCUT20160892",
+                        name: "张三",
+                        stuId: "2016211020208", 
+                        department: "经济与管理学院",
+                        major: "财务管理",
+                        gradYear: "2020"
+                    };
+                    renderDomData();
+                    forceGoToCardPage();
+                }
                 return;
             }
             
-            // 拦截 2：拿到了有效链接，但是在分享转发给第二个人时，触发了设备安全锁机制
+            // 🔒 如果链接正常，但设备指纹对不上（转发劫持拦截）
             if (!checkDeviceLock(currentUserId)) {
-                alert('安全警告：检测到当前访问设备非此校友卡的“首绑安全设备”。为保障账户安全，已限制该设备访问卡片。');
+                alert('【安全警告】\n检测到当前访问设备非此校友卡的“首绑安全设备”。\n为保障账户安全，已限制该设备访问卡片。');
                 return;
             }
 
-            // 成功通过全部校验，允许开门进入二级卡片页面
+            // 完美符合一切条件，正规开门
+            forceGoToCardPage();
+        }
+
+        function forceGoToCardPage() {
             document.getElementById('page-home').style.display = 'none';
             document.getElementById('page-card').style.display = 'flex';
             document.getElementById('nav-title').innerText = '校友卡';
@@ -383,7 +400,7 @@
             const d = new Date();
             const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
             const bj = new Date(utc + (3600000 * 8));
-            document.getElementById('live-clock-bar').innerText = `当前时间：${bj.getFullYear()}年${String(bj.getMonth() + 1).padStart(2, '0')}月${String(bj.getDate()).padStart(2, '0')}日 ${String(bj.getHours()).padStart(2, '0')}:${String(bj.getMinutes()).padStart(2, '0')}:${String(bj.getSeconds()).padStart(2, '0')}`;
+            document.getElementById('live-clock-bar').innerText = `当前时间：${bj.getFullYear()}年${String(bj.getMonth() + 1).padStart(2, '0')}月${String(bj.getDate')}日 ${String(bj.getHours()).padStart(2, '0')}:${String(bj.getMinutes()).padStart(2, '0')}:${String(bj.getSeconds()).padStart(2, '0')}`;
         }
 
         function triggerManualRefresh() { runClock(); }
