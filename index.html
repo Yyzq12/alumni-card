@@ -40,33 +40,37 @@
         }
         .wx-capsule { background: rgba(0, 0, 0, 0.12); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 16px; padding: 5px 12px; display: flex; gap: 12px; font-size: 14px; align-items: center; }
 
-        /* 🔒 顶栏隐藏控制台触发区域 */
+        /* 🔒 顶栏隐藏控制台触发区域：固定定位，全页面全时段通过顶栏长按左三击右呼出 */
         .admin-trigger { 
-            position: absolute; 
+            position: fixed; 
             top: 0; 
             left: 0; 
             width: 100%; 
+            max-width: 414px; 
             height: calc(48px + env(safe-area-inset-top, 20px)); 
             cursor: pointer; 
-            z-index: 101; 
+            z-index: 9999; 
             -webkit-user-select: none; 
             user-select: none; 
             -webkit-tap-highlight-color: transparent;
+            background: transparent;
         }
 
         /* ================= 🌟 一级页面样式 ================= */
         #page-home { width: 100%; display: flex; flex-direction: column; position: relative; background: #FFF; min-height: calc(100vh - 48px - env(safe-area-inset-top, 20px)); padding-bottom: 80px; }
         .home-mock-bg { width: 100%; display: block; object-fit: contain; }
         
-        /* 🎯 精准像素级定位隐藏点击热区 */
+        /* 🎯 【精准微调】对照截图红圈区域进行像素级覆盖 */
         .hotspot-alumni-card {
             position: absolute;
-            top: 450px;       
-            left: 27.5%;      
-            width: 20%;       
-            height: 90px;
+            top: 450px;         /* 基于截图金黄色卡片图标的大致高度位置 */      
+            left: 26%;          /* 居中偏左，完美切合第二个图标位置 */      
+            width: 22%;         /* 横向宽度完美覆盖“校友卡”图标与下方文字 */       
+            height: 85px;       /* 纵向高度纵深范围 */
             cursor: pointer;
+            z-index: 50; 
             -webkit-tap-highlight-color: transparent;
+            /* background: rgba(255, 0, 0, 0.3); */ /* 💡 调试提示：如果位置有偏移，取消本行注释即可显示半透明红块 */
         }
 
         /* ================= 🪪 二级页面样式 ================= */
@@ -113,7 +117,7 @@
         .live-timer-container { width: 100%; background-color: #5C1315; color: #FFFFFF; text-align: center; padding: 13px 0; border-radius: 16px; margin-top: 24px; font-size: 14.5px; font-weight: bold; letter-spacing: 0.5px; }
 
         /* ================= 🛠️ 控制面板样式 ================= */
-        .admin-panel { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.96); z-index: 999; padding: 20px; color: #fff; overflow-y: auto; }
+        .admin-panel { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.96); z-index: 10000; padding: 20px; color: #fff; overflow-y: auto; }
         .admin-panel.active { display: block; }
         .admin-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .form-group { margin-bottom: 12px; }
@@ -122,18 +126,17 @@
         .panel-btn { width: 100%; height: 44px; background: #C9262B; color: #fff; border: none; border-radius: 4px; margin-top: 10px; font-weight: bold; font-size: 14px; cursor: pointer; }
         .random-badge-btn-block { width: 100%; height: 44px; background: #5C1315; color: #fff; border: 1px solid #C9262B; border-radius: 4px; margin-top: 15px; font-weight: bold; font-size: 14px; cursor: pointer; }
         
-        /* 📖 使用说明书模块增强样式 */
         .help-doc-box { background: rgba(255, 255, 255, 0.08); border: 1px dashed rgba(255, 255, 255, 0.2); padding: 14px; border-radius: 6px; margin-top: 20px; font-size: 12.5px; line-height: 1.6; color: #e0e0e0; }
         .help-doc-box h4 { color: #ff9f43; margin-bottom: 8px; font-size: 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 4px; font-weight: bold; }
         .help-doc-box ul, .help-doc-box ol { padding-left: 18px; margin-bottom: 12px; }
-        .help-doc-box li { margin-bottom: 4px; }
         .code-mark { font-family: monospace; background: rgba(0,0,0,0.4); padding: 1px 4px; border-radius: 3px; color: #28a745; margin: 0 2px; }
     </style>
 </head>
 <body>
 
+    <div class="admin-trigger" id="gestureArea" style="-webkit-user-select: none; -webkit-touch-callout: none;"></div>
+
     <div class="wx-container">
-        <div class="admin-trigger" id="gestureArea" style="-webkit-user-select: none; -webkit-touch-callout: none;"></div>
         
         <div class="wx-nav">
             <span id="nav-back-btn" onclick="navigateToHome()" style="cursor:pointer; visibility: hidden;">〈 首页</span>
@@ -192,23 +195,10 @@
         <div class="help-doc-box">
             <h4>📖 后台添加新校友使用指南</h4>
             <ol>
-                <li><strong>信息填写：</strong> 在上方录入新校友的名字、长学号、卡号等信息，或点击 <span style="color:#ff9f43;">🎲 随机生成</span> 测试。</li>
-                <li><strong>打包复制：</strong> 点击绿色的 <span style="color:#28a745;">🚀 生成并复制</span> 按钮，系统会全自动计算缩写 ID，跳转目标页面，并将生成的配置与独立链接打包复制。</li>
-                <li><strong>粘贴入库：</strong> 复制成功后，回到电脑端，打开项目根目录下的<span class="code-mark">users.json</span>。在最后一条数据的末尾换行，直接按下粘贴（Ctrl + V），即可实现零输入、免排版追加。</li>
+                <li><strong>信息填写：</strong> 在上方输入信息，或点击 <span style="color:#ff9f43;">🎲 随机生成</span> 测试。</li>
+                <li><strong>打包复制：</strong> 点击绿色的 <span style="color:#28a745;">🚀 生成并复制</span> 按钮，系统自动计算缩写 ID 并打包复制。</li>
+                <li><strong>粘贴入库：</strong> 在电脑端打开根目录下的<span class="code-mark">users.json</span>，在倒数第二行粘贴（Ctrl + V）即可。</li>
             </ol>
-
-            <h4>🔍 短ID生成及 JSON 键值逻辑解释</h4>
-            <ul>
-                <li><strong>短ID算力公式：</strong> 键名舍弃原先的长学号或散列随机密钥，统一改为：<span class="code-mark">姓名拼音首字母 + 真实学号最后两位</span>。例如姓名叫“张三”，完整学号是“20162110202<b>08</b>”，则生成的精简短 ID 钥匙为 <span class="code-mark">zs08</span>。</li>
-                <li><strong>参数效果：</strong> 复制得到的测试专属链接，尾部形如：<span class="code-mark">index.html?id=zs08</span>。</li>
-                <li><strong>高保真还原：</strong> 当持有该链接的手机通过指纹验证进入页面时，电子卡片上的“学号”一栏<b>依然会展示 13 位的完整原始学号</b>，因为完整学号已经高保真存储在 JSON 字段中，实现既缩短了网址，又不破坏卡片美观。</li>
-            </ul>
-
-            <h4>🔒 硬件级动态指纹锁机制</h4>
-            <ul>
-                <li><strong>防转发劫持：</strong> 专属链接在特定的手机微信里首次打开时，会读取屏幕与内核环境算出一个永久指纹锁定。如果链接被转发给第二个人，对方因指纹校验失败会直接被拒之门外，防止泛滥转发。</li>
-                <li><strong>环境重置：</strong> 调试期间，如果需要更换新手机或电脑调试，可以用当前手机在页面里唤出本面板，点击橙色 <span style="color:#ff9f43;">🔓 重置设备锁</span> 按钮，当前 ID 即可在下一台新设备上重新建立首次绑定。</li>
-            </ul>
         </div>
     </div>
 
@@ -216,7 +206,6 @@
         let isCurrentLinkValid = false;
         let currentUserId = "";
 
-        // 🧠 核心轻量化算法：中文字符转换为拼音首字母
         function getChinesePinyinInitials(str) {
             if (!str) return "user";
             let result = "";
@@ -242,7 +231,6 @@
             return result || "uid";
         }
 
-        // ================= 📱 生成高精度设备指纹 =================
         function getDeviceFingerprint() {
             const screenInfo = `${window.screen.width}x${window.screen.height}x${window.screen.colorDepth}`;
             const ua = navigator.userAgent;
@@ -255,7 +243,6 @@
             return 'DEV-' + Math.abs(hash);
         }
 
-        // ================= 🔒 核心设备锁校验 =================
         function checkDeviceLock(userId) {
             if (!userId) return false;
             const currentFingerprint = getDeviceFingerprint();
@@ -276,21 +263,25 @@
                 return;
             }
             localStorage.removeItem(`lock_device_${currentUserId}`);
-            alert(`已成功解除用户 [${currentUserId}] 的设备锁！下次打开该链接的设备将会自动绑定为新主设备。`);
+            alert(`已成功解除用户 [${currentUserId}] 的设备锁！下次打开该链接的设备将自动绑定。`);
             window.location.reload();
         }
 
-        // ================= 🔄 页面安全路由 =================
+        // ================= 🛡️ 核心改动：精准路由与拦截警告逻辑 =================
         function tryNavigateToCard() {
+            // 拦截 1：如果不是指定参数链接进入的，或者 users.json 里压根查不到这个 ID
             if (!isCurrentLinkValid) {
-                alert('系统提示：未检测到您的校友卡档案激活记录，无法查看电子卡片。');
+                alert('系统提示：未检测到您的校友卡档案激活记录，请使用学校发放的专属验证链接访问。');
                 return;
             }
+            
+            // 拦截 2：拿到了有效链接，但是在分享转发给第二个人时，触发了设备安全锁机制
             if (!checkDeviceLock(currentUserId)) {
-                alert('安全警告：检测到当前设备环境与绑定的安全设备不一致。为保障账户安全，已限制该设备访问卡片。');
+                alert('安全警告：检测到当前访问设备非此校友卡的“首绑安全设备”。为保障账户安全，已限制该设备访问卡片。');
                 return;
             }
 
+            // 成功通过全部校验，允许开门进入二级卡片页面
             document.getElementById('page-home').style.display = 'none';
             document.getElementById('page-card').style.display = 'flex';
             document.getElementById('nav-title').innerText = '校友卡';
@@ -304,7 +295,6 @@
             document.getElementById('nav-back-btn').style.visibility = 'hidden';
         }
 
-        // ================= 🛠️ 数据处理 =================
         let currentConfig = { cardId: "", name: "", stuId: "", department: "", major: "", gradYear: "" };
 
         const jcMajorDatabase = [
