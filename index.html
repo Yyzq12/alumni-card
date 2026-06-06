@@ -61,17 +61,17 @@
         #page-home { width: 100%; display: flex; flex-direction: column; position: relative; background: #FFF; min-height: calc(100vh - 48px - env(safe-area-inset-top, 44px)); padding-bottom: 80px; }
         .home-mock-bg { width: 100%; display: block; object-fit: contain; }
         
-        /* 🎯 【核心重构】百分比动态自适应热区，彻底解决 iPhone 13 缩放错位 */
+        /* 🎯 一级页面中“校友卡”入口按钮样式 */
         .hotspot-alumni-card {
             position: absolute;
-            top: 61.5%;             /* 基于图片总高度的百分比定位，绝不因手机型号换代而偏离 */      
-            left: 27%;              /* 水平切中第二个图标 */      
-            width: 22%;             /* 完美包裹“校友卡”图标横向范围 */       
-            height: 11.5%;           /* 纵向高度包裹范围 */
+            top: 41.5%;             /* 👈 1. 上下位置：数值越大越靠下，越小越靠上 */      
+            left: 25%;              /* 👈 2. 左右位置：数值越大越靠右，越小越靠左 */      
+            width: 25%;             /* 👈 3. 按钮宽度：觉得太窄了就调大这个数字 */       
+            height: 10%;            /* 👈 4. 按钮高度：觉得太矮了就调大这个数字 */
             cursor: pointer;
             z-index: 50; 
             -webkit-tap-highlight-color: transparent;
-            /* background: rgba(255, 0, 0, 0.3); */ /* 💡 调试提示：如果线上还想肉眼微调，删掉本行注释即可显示半透明红块 */
+            background: rgba(255, 0, 0, 0.4); /* 💡 默认开启半透明红色，帮你一眼在手机上定位看它对得准不准！调准后把这行删掉即可变隐形 */
         }
 
         /* ================= 🪪 二级页面样式 ================= */
