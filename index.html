@@ -83,26 +83,83 @@
             </div>
         </div>
     </div>
+
+    <!-- 控制台面板（已融合第二份代码的全部功能） -->
     <div class="admin-panel" id="adminPanel">
-        <div class="admin-panel-header"><h3 style="color:#C9262B; font-size:18px;">荆楚理工学院控制台</h3></div>
-        <div class="form-group"><label>姓名</label><input type="text" id="i-name"></div>
-        <div class="form-group"><label>学号</label><input type="text" id="i-stuId"></div>
-        <div class="form-group"><label>右上角卡号</label><input type="text" id="i-cardId"></div>
-        <div class="form-group"><label>院系</label><input type="text" id="i-department"></div>
-        <div class="form-group"><label>专业</label><input type="text" id="i-major"></div>
-        <div class="form-group"><label>毕业年份</label><input type="text" id="i-gradYear"></div>
-        <button class="random-badge-btn-block" onclick="generateRandomStuId()">🎲 随机测试数据</button>
-        <button class="panel-btn" style="background:#28a745;" onclick="generateStandaloneUrl()">🚀 生成并复制</button>
+        <div class="admin-panel-header">
+            <h3 style="color:#C9262B; font-size:18px;">荆楚理工学院控制台</h3>
+        </div>
+        <div style="background: rgba(199, 38, 43, 0.15); border: 1px solid #C9262B; padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 11px; color: #ffbcbc; line-height: 1.5;">
+            <strong>⚠️ 技术演示与娱乐免责提示：</strong><br>
+            本项目属于纯前端视觉技术原型，仅供技术交流与娱乐演示。严禁用于任何形式的伪造欺骗或其它违反国家法律的非法用途。使用者自身承担全部责任。
+        </div>
+        <div class="form-group"><label>右上角卡号</label><input type="text" id="i-cardId" value="JCCUT20160892"></div>
+        <div class="form-group"><label>姓名</label><input type="text" id="i-name" value="唐海林"></div>
+        <div class="form-group"><label>学号</label><input type="text" id="i-stuId" value="2016211020208"></div>
+        <div class="form-group"><label>院系</label><input type="text" id="i-department" value="经济与管理学院"></div>
+        <div class="form-group"><label>专业</label><input type="text" id="i-major" value="财务管理"></div>
+        <div class="form-group"><label>毕业年份</label><input type="text" id="i-gradYear" value="2020"></div>
+        
+        <button class="random-badge-btn-block" onclick="generateRandomStuId()">🎲 随机专业与学号(2016-2020)</button>
+        <button class="panel-btn" style="background:#28a745;" onclick="generateStandaloneUrl()">🚀 生成并复制该用户的专属独立链接</button>
         <button class="panel-btn" style="background:#ff9f43;" onclick="resetDeviceLock()">🔓 重置设备锁</button>
         <button class="panel-btn" style="background:#444;" onclick="closePanel()">关闭控制台</button>
     </div>
+
     <script>
-        let isCurrentLinkValid = false; let currentUserId = "";
+        // ========== 全局状态 ==========
+        let currentConfig = {
+            cardId: "--------",
+            name: "--",
+            stuId: "--",
+            department: "--",
+            major: "--",
+            gradYear: "--"
+        };
+        let currentUserId = "";   // 兼容旧版users.json时的id
+
+        // ========== 专业数据库（真实院系） ==========
+        const jcMajorDatabase = [
+            { dept: "经济与管理学院", major: "财务管理", code: "21102" },
+            { dept: "经济与管理学院", major: "大数据与会计", code: "30502" },
+            { dept: "医学部", major: "口腔医学（专升本）", code: "21102" },
+            { dept: "师范学院", major: "小学教育", code: "40850" },
+            { dept: "新能源学院", major: "印刷工程（专升本）", code: "2420101" }, 
+            { dept: "食品与生物学院", major: "植物科学与技术（专升本）", code: "2420703" }, 
+            { dept: "食品与生物学院", major: "食品科学与工程", code: "2424407" }, 
+            { dept: "数理学院", major: "数学与应用数学", code: "09500" },
+            { dept: "艺术学院", major: "环境设计", code: "12050" },
+            { dept: "外国语学院", major: "外国语言文学", code: "10500" }
+        ];
+        const firstNames = ["张", "李", "王", "刘", "陈", "杨", "赵", "黄", "周", "吴", "徐", "孙", "马", "胡", "郭", "林"];
+        const lastNames = ["逸飞", "梦溪", "泽宇", "梓涵", "听风", "晓静", "嘉杰", "雨桐", "博远", "子墨", "瑞霖", "思源", "楚菁", "雪珂", "海林"];
+
+        // ========== 设备指纹 ==========
         function getDeviceFingerprint() { return 'DEV-' + Math.abs(window.screen.width * window.screen.height); }
-        
+
+        // ========== 页面导航 ==========
+        function forceGoToCardPage() {
+            document.getElementById('page-home').style.display = 'none';
+            document.getElementById('page-card').style.display = 'flex';
+            document.getElementById('nav-title').innerText = '校友卡';
+            document.getElementById('nav-back-btn').style.visibility = 'visible';
+        }
+        function navigateToHome() {
+            document.getElementById('page-card').style.display = 'none';
+            document.getElementById('page-home').style.display = 'flex';
+            document.getElementById('nav-title').innerText = '首页';
+            document.getElementById('nav-back-btn').style.visibility = 'hidden';
+        }
+
+        // ========== 设备锁核心 ==========
         function tryNavigateToCard() {
-            if (!isCurrentLinkValid) { alert('当前未查询到您的校友卡。'); return; }
-            const key = `lock_${currentUserId}`;
+            // 使用学号作为唯一标识（优先使用currentConfig.stuId，如果没有则用旧版currentUserId）
+            const userId = (currentConfig.stuId && currentConfig.stuId !== "--") ? currentConfig.stuId : currentUserId;
+            if (!userId || userId === "--") {
+                alert('未识别到用户身份，无法验证设备。');
+                return;
+            }
+            const key = `lock_${userId}`;
             if (!localStorage.getItem(key)) {
                 if(confirm("【首次激活提示】\n检测到您是第一次在当前设备访问。\n\n⚠️ 重要说明：\n本链接已与您的当前设备自动绑定，今后仅允许在本台设备上打开。请确认是否继续？")) {
                     localStorage.setItem(key, getDeviceFingerprint());
@@ -115,15 +172,154 @@
             }
         }
 
-        function resetDeviceLock() { localStorage.removeItem(`lock_${currentUserId}`); alert('已重置'); window.location.reload(); }
-        function forceGoToCardPage() { document.getElementById('page-home').style.display = 'none'; document.getElementById('page-card').style.display = 'flex'; document.getElementById('nav-title').innerText = '校友卡'; document.getElementById('nav-back-btn').style.visibility = 'visible'; }
-        function navigateToHome() { document.getElementById('page-card').style.display = 'none'; document.getElementById('page-home').style.display = 'flex'; document.getElementById('nav-title').innerText = '首页'; document.getElementById('nav-back-btn').style.visibility = 'hidden'; }
-        function parseUrlParams() { const id = new URLSearchParams(window.location.search).get('id'); currentUserId = id; if(!id) return; fetch('users.json?t='+Date.now()).then(r=>r.json()).then(d=>{ if(d[id]) { isCurrentLinkValid=true; const u=d[id]; document.getElementById('v-cardId').innerText=u.cardId; document.getElementById('v-name').innerText=u.name; document.getElementById('v-stuId').innerText=u.stuId; document.getElementById('v-department').innerText=u.department; document.getElementById('v-major').innerText=u.major; document.getElementById('v-gradYear').innerText=u.gradYear; } }); }
-        function runClock() { const d=new Date(); document.getElementById('live-clock-bar').innerText=`当前时间：${d.getFullYear()}年${String(d.getMonth()+1).padStart(2,'0')}月${String(d.getDate()).padStart(2,'0')}日 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`; }
-        function triggerManualRefresh() { runClock(); }
-        function closePanel() { document.getElementById('adminPanel').classList.remove('active'); }
-        document.getElementById('gestureArea').addEventListener('touchstart', (e)=>{ if(e.touches.length==3) document.getElementById('adminPanel').classList.add('active'); });
-        navigateToHome(); parseUrlParams(); setInterval(runClock, 1000);
+        function resetDeviceLock() {
+            const userId = (currentConfig.stuId && currentConfig.stuId !== "--") ? currentConfig.stuId : currentUserId;
+            if (!userId) {
+                alert('未找到当前用户，无法重置。');
+                return;
+            }
+            localStorage.removeItem(`lock_${userId}`);
+            alert('已重置当前用户的设备锁，请重新从首页进入。');
+            if (document.getElementById('page-card').style.display === 'flex') {
+                navigateToHome();
+            }
+        }
+
+        // ========== 数据渲染 ==========
+        function renderDomData() {
+            document.getElementById('v-cardId').innerText = currentConfig.cardId;
+            document.getElementById('v-name').innerText = currentConfig.name;
+            document.getElementById('v-stuId').innerText = currentConfig.stuId;
+            document.getElementById('v-department').innerText = currentConfig.department;
+            document.getElementById('v-major').innerText = currentConfig.major;
+            document.getElementById('v-gradYear').innerText = currentConfig.gradYear;
+        }
+        function syncConfigToInputs() {
+            document.getElementById('i-cardId').value = currentConfig.cardId === "--------" ? "" : currentConfig.cardId;
+            document.getElementById('i-name').value = currentConfig.name === "--" ? "" : currentConfig.name;
+            document.getElementById('i-stuId').value = currentConfig.stuId === "--" ? "" : currentConfig.stuId;
+            document.getElementById('i-department').value = currentConfig.department === "--" ? "" : currentConfig.department;
+            document.getElementById('i-major').value = currentConfig.major === "--" ? "" : currentConfig.major;
+            document.getElementById('i-gradYear').value = currentConfig.gradYear === "--" ? "" : currentConfig.gradYear;
+        }
+
+        // ========== URL参数解析（兼容独立链接 + users.json） ==========
+        function parseUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            
+            // 情况1：URL直接携带完整卡片参数（独立链接） -> 仅更新数据，不自动跳转，需手动点首页热区（触发设备锁）
+            if (params.get('cardId') || params.get('name') || params.get('stuId')) {
+                currentConfig.cardId = params.get('cardId') || currentConfig.cardId;
+                currentConfig.name = params.get('name') || currentConfig.name;
+                currentConfig.stuId = params.get('stuId') || currentConfig.stuId;
+                currentConfig.department = params.get('department') || currentConfig.department;
+                currentConfig.major = params.get('major') || currentConfig.major;
+                currentConfig.gradYear = params.get('gradYear') || currentConfig.gradYear;
+                renderDomData();
+                syncConfigToInputs();
+                return;
+            }
+
+            // 情况2：只有id参数，从users.json加载（旧版逻辑）
+            const id = params.get('id');
+            if (id) {
+                currentUserId = id;
+                fetch('users.json?t=' + Date.now())
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data[id]) {
+                            const u = data[id];
+                            currentConfig = {
+                                cardId: u.cardId,
+                                name: u.name,
+                                stuId: u.stuId,
+                                department: u.department,
+                                major: u.major,
+                                gradYear: u.gradYear
+                            };
+                            renderDomData();
+                            syncConfigToInputs();
+                        }
+                    })
+                    .catch(() => console.log('users.json 加载失败，可忽略'));
+            }
+        }
+
+        // ========== 时钟 ==========
+        function runClock() {
+            const d = new Date();
+            document.getElementById('live-clock-bar').innerText = 
+                `当前时间：${d.getFullYear()}年${String(d.getMonth()+1).padStart(2,'0')}月${String(d.getDate()).padStart(2,'0')}日 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+        }
+        function triggerManualRefresh() {
+            runClock();
+        }
+
+        // ========== 控制台功能 ==========
+        function generateRandomStuId() {
+            const startYear = Math.floor(Math.random() * (2020 - 2016 + 1)) + 2016;
+            const randomMajorMeta = jcMajorDatabase[Math.floor(Math.random() * jcMajorDatabase.length)];
+            const classNum = String(Math.floor(Math.random() * 3) + 1).padStart(2, '0');
+            const seatNum = String(Math.floor(Math.random() * 40) + 1).padStart(2, '0');
+            const finalStuId = `${startYear}${randomMajorMeta.code}${classNum}${seatNum}`;
+            const gradYear = startYear + 4;
+            const randomName = firstNames[Math.floor(Math.random() * firstNames.length)] + lastNames[Math.floor(Math.random() * lastNames.length)];
+
+            document.getElementById('i-stuId').value = finalStuId;
+            document.getElementById('i-name').value = randomName;
+            document.getElementById('i-department').value = randomMajorMeta.dept;
+            document.getElementById('i-major').value = randomMajorMeta.major;
+            document.getElementById('i-gradYear').value = gradYear;
+            document.getElementById('i-cardId').value = `JCCUT${startYear}0${Math.floor(Math.random() * 80) + 10}`;
+        }
+
+        function generateStandaloneUrl() {
+            // 读取输入框内容作为最新配置
+            const cfg = {
+                cardId: document.getElementById('i-cardId').value,
+                name: document.getElementById('i-name').value,
+                stuId: document.getElementById('i-stuId').value,
+                department: document.getElementById('i-department').value,
+                major: document.getElementById('i-major').value,
+                gradYear: document.getElementById('i-gradYear').value
+            };
+            // 更新全局配置并渲染
+            currentConfig = cfg;
+            renderDomData();
+            // 构建URL
+            const baseUrl = window.location.origin + window.location.pathname;
+            const params = new URLSearchParams(cfg);
+            const fullUrl = baseUrl + '?' + params.toString();
+            // 复制到剪贴板
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(fullUrl).then(() => {
+                    alert('✅ 专属独立链接已复制！\n\n该链接绑定当前设备，首次打开需激活。');
+                }).catch(() => {
+                    prompt('手动复制以下链接：', fullUrl);
+                });
+            } else {
+                prompt('手动复制以下链接：', fullUrl);
+            }
+            // 跳转到卡片页（但注意：再次从首页进入仍需设备锁验证）
+            forceGoToCardPage();
+        }
+
+        function closePanel() {
+            document.getElementById('adminPanel').classList.remove('active');
+        }
+
+        // ========== 三指手势打开控制台 ==========
+        document.getElementById('gestureArea').addEventListener('touchstart', (e) => {
+            if (e.touches.length == 3) {
+                document.getElementById('adminPanel').classList.add('active');
+                syncConfigToInputs();  // 打开时自动同步当前卡片数据
+            }
+        });
+
+        // ========== 初始化 ==========
+        navigateToHome();
+        parseUrlParams();
+        setInterval(runClock, 1000);
     </script>
 </body>
 </html>
