@@ -18,13 +18,12 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif; }
         body { background-color: #EDEBE9; display: flex; flex-direction: column; align-items: center; min-height: 100vh; position: relative; }
         
-        /* 大外壳背景色：1:1 还原微信官方原版浅灰白色 */
-        .wx-container { width: 100%; max-width: 414px; background-color: #F7F7F7; display: flex; flex-direction: column; align-items: center; padding-bottom: 40px; min-height: 100vh; position: relative; }
+        /* 大外壳微信背景色 */
+        .wx-container { width: 100%; max-width: 414px; background-color: #F7F7F7; display: flex; flex-direction: column; align-items: center; min-height: 100vh; position: relative; }
         
-        /* 🎨 核心修复：顶栏新增安全区域垫高，完美把状态栏染成红色 */
+        /* 🎨 统一顶栏（一级和二级页面共用） */
         .wx-nav { 
             width: 100%; 
-            /* 自动获取刘海/灵动岛高度并转为红色背景 padding */
             padding-top: env(safe-area-inset-top, 20px); 
             height: calc(48px + env(safe-area-inset-top, 20px)); 
             display: flex; 
@@ -37,10 +36,11 @@
             font-weight: bold; 
             background-color: #A82E2E; 
             position: relative; 
+            z-index: 100;
         }
         .wx-capsule { background: rgba(0, 0, 0, 0.12); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 16px; padding: 5px 12px; display: flex; gap: 12px; font-size: 14px; align-items: center; }
 
-        /* 🔒 顶栏隐藏控制台触发区域（已优化为 100% 宽度，支持双手跨区域联动） */
+        /* 🔒 顶栏隐藏控制台触发区域 */
         .admin-trigger { 
             position: absolute; 
             top: 0; 
@@ -48,18 +48,37 @@
             width: 100%; 
             height: calc(48px + env(safe-area-inset-top, 20px)); 
             cursor: pointer; 
-            z-index: 99; 
+            z-index: 101; 
             -webkit-user-select: none; 
             user-select: none; 
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* ================= 🪪 电子卡片主体 ================= */
+        /* ================= 🌟 一级页面（小程序首页）样式 ================= */
+        #page-home { width: 100%; display: flex; flex-direction: column; position: relative; background: #FFF; min-height: calc(100vh - 48px - env(safe-area-inset-top, 20px)); padding-bottom: 80px; }
+        
+        /* 直接通过全屏高精截图作为首页骨架，确保100%还原度 */
+        .home-mock-bg { width: 100%; display: block; object-fit: contain; }
+        
+        /* 🎯 精准像素级定位：覆盖在原图“校友卡”图标上的隐形点击热区 */
+        .hotspot-alumni-card {
+            position: absolute;
+            top: 450px;       /* 对应原图中四个金刚区图标的垂直位置线 */
+            left: 27.5%;      /* 精准定位在第二个图标“校友卡”的上方 */
+            width: 20%;       /* 刚好包裹住校友卡图标与文字的宽度 */
+            height: 90px;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* ================= 🪪 二级页面（电子卡片主体）样式 ================= */
+        #page-card { width: 100%; display: none; flex-direction: column; align-items: center; } /* 默认隐藏 */
+        
         .alumni-card { 
             width: calc(100% - 24px); 
             height: 220px; 
             background-color: #BD262A; 
-            background-image: url('card-bg.png'); /* 纯空白底图 */
+            background-image: url('card-bg.png'); 
             background-size: 100% 100%; 
             background-repeat: no-repeat;
             border-radius: 12px; 
@@ -72,59 +91,30 @@
         .card-top-area { position: relative; width: 100%; height: calc(100% - 38px); }
         .card-serial { position: absolute; top: 16px; right: 20px; font-size: 13px; font-family: "Courier New", Courier, monospace; font-weight: bold; color: rgba(255, 255, 255, 0.9); letter-spacing: 0.5px; }
         
-        /* 📸 头像框绝杀隐藏：防止样式意外被重新唤醒覆盖 */
-        .avatar-box, .avatar-box img { 
-            display: none !important; 
-        }
+        .avatar-box, .avatar-box img { display: none !important; }
         
-       /* 🛠️ 数据排版区域：紧贴头像右侧，整体靠左排列 */
         .info-fields { 
             position: absolute;
             top: 26px;
             left: 109px; 
             display: flex; 
             flex-direction: column; 
-            gap: 5.5px; /* 💡【在这里调整行间距空隙】 */
+            gap: 5.5px; 
         }
-        
         .info-row { display: flex; align-items: center; height: 19px; line-height: 19px; }
-        
-        /* 🏷️ 标签样式：不加粗、自然左对齐 */
-        .info-label { 
-            font-size: 14.5px;
-            color: rgba(255, 255, 255, 0.95); 
-            font-weight: normal; 
-            flex-shrink: 0;
-            letter-spacing: 0.5px;
-            white-space: nowrap;
-        }
-        
-        /* ✏️ 内容数据样式：不加粗 */
-        .info-value { 
-            font-size: 14.5px;
-            font-weight: normal; 
-            color: #FFFFFF !important; 
-            text-decoration: none !important; 
-            pointer-events: none; 
-            white-space: nowrap;
-            letter-spacing: 0.5px;
-        }
-        
-        /* 🌟 底部金边文字区域 */
+        .info-label { font-size: 14.5px; color: rgba(255, 255, 255, 0.95); font-weight: normal; flex-shrink: 0; letter-spacing: 0.5px; white-space: nowrap; }
+        .info-value { font-size: 14.5px; font-weight: normal; color: #FFFFFF !important; text-decoration: none !important; pointer-events: none; white-space: nowrap; letter-spacing: 0.5px; }
         .card-gold-strip { height: 38px; width: 100%; position: absolute; bottom: 0; left: 0; display: flex; align-items: center; padding-left: 20px; font-size: 11px; color: #8A1A1D; font-weight: bold; letter-spacing: 0.8px; }
 
-        /* ================= 下半部分 ================= */
         .white-panel { width: calc(100% - 24px); background: #FFFFFF; border-radius: 12px; margin-top: 14px; padding: 24px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.04); }
         .qr-header-title { font-size: 15px; color: #333333; margin-bottom: 18px; font-weight: bold; letter-spacing: 0.5px; }
         .qr-box-border { width: 205px; height: 205px; background: #FFF; border: 1px solid #E5E5E5; border-radius: 4px; display: flex; align-items: center; justify-content: center; padding: 8px; }
         .qr-box-border img { width: 100%; height: 100%; object-fit: contain; }
         
         .refresh-lnk { margin-top: 14px; color: #999999; font-size: 13px; display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; }
-        .refresh-lnk:active { opacity: 0.6; }
+        .live-timer-container { width: 100%; background-color: #5C1315; color: #FFFFFF; text-align: center; padding: 13px 0; border-radius: 16px; margin-top: 24px; font-size: 14.5px; font-weight: bold; letter-spacing: 0.5px; }
 
-        .live-timer-container { width: 100%; background-color: #5C1315; color: #FFFFFF; text-align: center; padding: 13px 0; border-radius: 16px; margin-top: 24px; font-size: 14.5px; font-weight: bold; letter-spacing: 0.5px; transition: opacity 0.1s ease; }
-
-        /* ================= 🛠️ 控制面板 ================= */
+        /* ================= 🛠️ 控制面板样式 ================= */
         .admin-panel { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.96); z-index: 999; padding: 20px; color: #fff; overflow-y: auto; }
         .admin-panel.active { display: block; }
         .admin-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
@@ -132,15 +122,10 @@
         .form-group label { display: block; font-size: 12px; margin-bottom: 4px; color: #ccc; }
         .form-group input { width: 100%; height: 38px; border: none; border-radius: 4px; padding: 0 10px; font-size: 14px; color: #333; outline: none; }
         .panel-btn { width: 100%; height: 44px; background: #C9262B; color: #fff; border: none; border-radius: 4px; margin-top: 10px; font-weight: bold; font-size: 14px; cursor: pointer; }
-        
-        .random-badge-btn-block { width: 100%; height: 44px; background: #5C1315; color: #fff; border: 1px solid #C9262B; border-radius: 4px; margin-top: 15px; font-weight: bold; font-size: 14px; cursor: pointer; letter-spacing: 0.5px; }
-        .random-badge-btn-block:active { transform: scale(0.99); background: #C9262B; }
-
-        /* 💡 新增：使用说明书专属美化样式 */
+        .random-badge-btn-block { width: 100%; height: 44px; background: #5C1315; color: #fff; border: 1px solid #C9262B; border-radius: 4px; margin-top: 15px; font-weight: bold; font-size: 14px; cursor: pointer; }
         .help-doc-box { background: rgba(255, 255, 255, 0.08); border: 1px dashed rgba(255, 255, 255, 0.2); padding: 14px; border-radius: 6px; margin-top: 20px; font-size: 12.5px; line-height: 1.6; color: #e0e0e0; }
         .help-doc-box h4 { color: #ffbcbc; margin-bottom: 8px; font-size: 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 4px; }
         .help-doc-box ol { padding-left: 18px; margin-bottom: 10px; }
-        .help-doc-box li { margin-bottom: 4px; }
         .help-tag { background: #C9262B; padding: 1px 5px; border-radius: 3px; font-size: 11px; font-weight: bold; }
     </style>
 </head>
@@ -150,39 +135,40 @@
         <div class="admin-trigger" id="gestureArea" style="-webkit-user-select: none; -webkit-touch-callout: none;"></div>
         
         <div class="wx-nav">
-            <span>〈 校友卡</span>
+            <span id="nav-back-btn" onclick="navigateToHome()" style="cursor:pointer; visibility: hidden;">〈 首页</span>
+            <span id="nav-title">首页</span>
             <div class="wx-capsule"><span>•••</span> <span>●</span></div>
         </div>
 
-        <div class="alumni-card">
-            <div class="card-top-area">
-                <div class="card-serial" id="v-cardId">JCCUT20160892</div>
-                
-                <div class="avatar-box">
-                    <img id="v-avatar" src="avatar.png" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'46\' height=\'46\' viewBox=\'0 0 24 24\' fill=\'%23D2D2D2\'><path d=\'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5-3.33-8-3.33z\'/></svg>'">
-                </div>
-
-                <div class="info-fields">
-                    <div class="info-row"><div class="info-label">姓名：</div><div class="info-value" id="v-name">唐海林</div></div>
-                    <div class="info-row"><div class="info-label">学号：</div><div class="info-value" id="v-stuId">2016211020208</div></div>
-                    <div class="info-row"><div class="info-label">院系：</div><div class="info-value" id="v-department">经济与管理学院</div></div>
-                    <div class="info-row"><div class="info-label">专业：</div><div class="info-value" id="v-major">财务管理</div></div>
-                    <div class="info-row"><div class="info-label">毕业年份：</div><div class="info-value" id="v-gradYear">2020</div></div>
-                </div>
-            </div>
-            <div class="card-gold-strip" style="opacity: 1;">
-
-            </div>
+        <div id="page-home">
+            <img class="home-mock-bg" src="home-bg.png" alt="小程序首页">
+            
+            <div class="hotspot-alumni-card" onclick="navigateToCard()"></div>
         </div>
 
-        <div class="white-panel">
-            <div class="qr-header-title">校友二维码</div>
-            <div class="qr-box-border">
-                <img id="v-qr" src="qr.png" alt="二维码">
+        <div id="page-card">
+            <div class="alumni-card">
+                <div class="card-top-area">
+                    <div class="card-serial" id="v-cardId">JCCUT20160892</div>
+                    <div class="info-fields">
+                        <div class="info-row"><div class="info-label">姓名：</div><div class="info-value" id="v-name">唐海林</div></div>
+                        <div class="info-row"><div class="info-label">学号：</div><div class="info-value" id="v-stuId">2016211020208</div></div>
+                        <div class="info-row"><div class="info-label">院系：</div><div class="info-value" id="v-department">经济与管理学院</div></div>
+                        <div class="info-row"><div class="info-label">专业：</div><div class="info-value" id="v-major">财务管理</div></div>
+                        <div class="info-row"><div class="info-label">毕业年份：</div><div class="info-value" id="v-gradYear">2020</div></div>
+                    </div>
+                </div>
+                <div class="card-gold-strip"></div>
             </div>
-            <div class="refresh-lnk" onclick="triggerManualRefresh()">↻ 刷新</div>
-            
-            <div class="live-timer-container" id="live-clock-bar">当前时间：读取中...</div>
+
+            <div class="white-panel">
+                <div class="qr-header-title">校友二维码</div>
+                <div class="qr-box-border">
+                    <img id="v-qr" src="qr.png" alt="二维码">
+                </div>
+                <div class="refresh-lnk" onclick="triggerManualRefresh()">↻ 刷新</div>
+                <div class="live-timer-container" id="live-clock-bar">当前时间：读取中...</div>
+            </div>
         </div>
     </div>
 
@@ -207,31 +193,35 @@
         <button class="panel-btn" style="background:#444;" onclick="closePanel()">关闭控制台</button>
 
         <div class="help-doc-box">
-            <h4>📖 全新中心化数据驱动使用说明</h4>
-            <p style="margin-bottom: 8px; color: #ffbcbc; font-weight: bold;">目前链接已全部升级为远程云端控制，若要开通或修改账号链接，请执行以下两步：</p>
-            
-            <p style="font-weight: bold; margin-top:6px; color:#fff;">第一步：去 GitHub 配置/更新数据库</p>
+            <h4>📖 全新二级页面数据控制说明</h4>
+            <p style="margin-bottom: 8px; color: #ffbcbc; font-weight: bold;">页面已无缝升级为双级嵌套。远程控制依然通过 <span style="color:#ffda79;">users.json</span> 实现：</p>
             <ol>
-                <li>在 GitHub 仓库中创建或编辑同目录下的 <span style="color:#ffda79;">users.json</span> 文件。</li>
-                <li>按照格式添加用户，必须以 <span style="color:#ffda79;">"学号"</span> 作为大括号外层的暗号（键值）。</li>
-                <li>如果需要远程封禁或销毁某个链接，直接在 JSON 中把该用户的 <span style="color:#ffda79;">"status": "active"</span> 改为 <span style="color:#ffda79;">"status": "expired"</span> 即可。</li>
+                <li><strong>默认访问：</strong> 用户通过专属链接访问时，首先停留在精心设计的伪装“首页”。</li>
+                <li><strong>页面路由：</strong> 点击首页的 <span style="color:#ffda79;">“校友卡”</span> 图标，将瞬间平滑切入二级卡片页。点击左上角可退回。</li>
+                <li><strong>链接开通：</strong> 点击上方的生成链接，分发出去即可，机制保持不变。</li>
             </ol>
-
-            <p style="font-weight: bold; margin-top:6px; color:#fff;">第二步：获取该用户的专属链接</p>
-            <ol>
-                <li><strong>方法 A（自动生成）：</strong>在本控制台上方输入或🎲随机出你想开通的学号资料，点击上方的 <span class="help-tag">生成并复制...</span> 按钮，系统将自动把缩短后的完美暗号网址复制到剪贴板。</li>
-                <li><strong>方法 B（手动拼接）：</strong>直接在你的主站网址后拼接参数：<span style="color:#4cd137;">?id=对应学号</span> 即可直接分发（例如：<span style="font-family:monospace; font-size:11px;">?id=2016211020208</span>）。</li>
-            </ol>
-
-            <p style="font-size: 11px; color: #aaa; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 6px; margin-top: 6px;">
-                💡 <strong>关于样式与字体更新说明：</strong><br>
-                由于 iOS 浏览器对网页样式的缓存极其顽固，当你修改了页面字体或行距后，已发出去的旧链接如果没看到效果，请让对方在网址最后随意加个无关字符刷新（例如拼接 <span style="color:#fff;">&v=2</span> ），即可完美冲掉本地缓存并同步最新样式。
-            </p>
         </div>
     </div>
 
     <script>
-        // ================= 🛠️ 中心化 JSON 远程数据控制驱动核心逻辑 =================
+        // ================= 🔄 页面路由切换引擎 =================
+        function navigateToCard() {
+            document.getElementById('page-home').style.display = 'none';
+            document.getElementById('page-card').style.display = 'flex';
+            document.getElementById('nav-title').innerText = '校友卡';
+            const backBtn = document.getElementById('nav-back-btn');
+            backBtn.style.visibility = 'visible';
+        }
+
+        function navigateToHome() {
+            document.getElementById('page-card').style.display = 'none';
+            document.getElementById('page-home').style.display = 'flex';
+            document.getElementById('nav-title').innerText = '首页';
+            const backBtn = document.getElementById('nav-back-btn');
+            backBtn.style.visibility = 'hidden';
+        }
+
+        // ================= 🛠️ 中心化数据驱动逻辑不变 =================
         let currentConfig = { cardId: "加载中...", name: "加载中...", stuId: "加载中...", department: "加载中...", major: "加载中...", gradYear: "加载中..." };
 
         const jcMajorDatabase = [
@@ -250,20 +240,16 @@
         const firstNames = ["张", "李", "王", "刘", "陈", "杨", "赵", "黄", "周", "吴", "徐", "孙", "马", "胡", "郭", "林"];
         const lastNames = ["逸飞", "梦溪", "泽宇", "梓涵", "听风", "晓静", "嘉杰", "雨桐", "博远", "子墨", "瑞霖", "思源", "楚菁", "雪珂", "海林"];
 
-        // 异步抓取 GitHub 上的 users.json 简易数据库
         function parseUrlParams() {
             const params = new URLSearchParams(window.location.search);
-            const userId = params.get('id'); // 现在链接统一精简为只需要一个暗号参数：?id=学号
+            const userId = params.get('id');
 
-            // 兜底：如果直接访问不带 id，默认读取显示控制台现有的表单数据
             if (!userId) {
                 readFormToConfig();
                 renderDomData();
                 return;
             }
 
-            // 发起网络请求，读取同级目录下的 users.json 文件
-            // 加入 Date.now() 强行让 GitHub 每次都返回最新修改的文件，击碎浏览器缓存
             fetch('users.json?t=' + Date.now())
                 .then(response => {
                     if (!response.ok) throw new Error('数据库网络错误');
@@ -273,7 +259,6 @@
                     if (data && data[userId]) {
                         const user = data[userId];
 
-                        // 🔍 远程生命周期与权限控制拦截：如果在 JSON 里把用户状态改成 expired，一秒阻断并抹除隐私
                         if (user.status === "expired") {
                             document.body.innerHTML = `
                                 <div style="text-align:center; padding-top:120px; font-family:-apple-system,sans-serif; color:#666; background:#EDEBE9; min-height:100vh;">
@@ -284,37 +269,34 @@
                             return;
                         }
 
-                        // 将 GitHub 远程最新的精准控制数据同步到配置中
                         currentConfig = {
                             cardId: user.cardId || "JCCUT000000",
                             name: user.name || "未命名",
-                            stuId: userId, // 直接使用键值学号
+                            stuId: userId,
                             department: user.department || "未设定",
                             major: user.major || "未设定",
                             gradYear: user.gradYear || "2020"
                         };
 
-                        // 同步把最新数据回填进控制台输入框里，方便在前端管理查看
                         Object.keys(currentConfig).forEach(key => {
                             const inputElement = document.getElementById('i-' + key);
                             if (inputElement) inputElement.value = currentConfig[key];
                         });
 
-                        renderDomData(); // 渲染到电子卡片上
+                        renderDomData();
                     } else {
-                        alert('未在云端数据库中检索到学号为 [' + userId + '] 的校友卡备案，请核对 users.json 配置文件！');
+                        alert('未在云端检索到学号 [' + userId + '] 的校友卡备案，请核对 users.json！');
                         readFormToConfig();
                         renderDomData();
                     }
                 })
                 .catch(err => {
-                    console.error('读取云端数据失败，以降级模式读取本地输入:', err);
+                    console.error('降级读取本地输入:', err);
                     readFormToConfig();
                     renderDomData();
                 });
         }
 
-        // 兜底辅助：从表单输入框读取
         function readFormToConfig() {
             Object.keys(currentConfig).forEach(key => {
                 const inputElement = document.getElementById('i-' + key);
@@ -335,19 +317,15 @@
             const startYear = Math.floor(Math.random() * (2020 - 2016 + 1)) + 2016;
             const randomMajorMeta = jcMajorDatabase[Math.floor(Math.random() * jcMajorDatabase.length)];
             const fixedCode = randomMajorMeta.code;
-            
             const classNum = String(Math.floor(Math.random() * 3) + 1).padStart(2, '0');
             const seatNum = String(Math.floor(Math.random() * 40) + 1).padStart(2, '0');
-            
             const finalStuId = `${startYear}${fixedCode}${classNum}${seatNum}`;
-            const gradYear = startYear + 4;
-            const randomName = firstNames[Math.floor(Math.random() * firstNames.length)] + lastNames[Math.floor(Math.random() * lastNames.length)];
-
+            
             document.getElementById('i-stuId').value = finalStuId;
-            document.getElementById('i-name').value = randomName;
+            document.getElementById('i-name').value = firstNames[Math.floor(Math.random() * firstNames.length)] + lastNames[Math.floor(Math.random() * lastNames.length)];
             document.getElementById('i-department').value = randomMajorMeta.dept;
             document.getElementById('i-major').value = randomMajorMeta.major;
-            document.getElementById('i-gradYear').value = gradYear;
+            document.getElementById('i-gradYear').value = startYear + 4;
             document.getElementById('i-cardId').value = `JCCUT${startYear}0${Math.floor(Math.random() * 80) + 10}`;
         }
 
@@ -355,109 +333,60 @@
             const d = new Date();
             const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
             const bj = new Date(utc + (3600000 * 8));
-            const year = bj.getFullYear();
-            const month = String(bj.getMonth() + 1).padStart(2, '0');
-            const day = String(bj.getDate()).padStart(2, '0');
-            const h = String(bj.getHours()).padStart(2, '0');
-            const m = String(bj.getMinutes()).padStart(2, '0');
-            const s = String(bj.getSeconds()).padStart(2, '0');
-            document.getElementById('live-clock-bar').innerText = `当前时间：${year}年${month}月${day}日 ${h}:${m}:${s}`;
+            document.getElementById('live-clock-bar').innerText = `当前时间：${bj.getFullYear()}年${String(bj.getMonth() + 1).padStart(2, '0')}月${String(bj.getDate()).padStart(2, '0')}日 ${String(bj.getHours()).padStart(2, '0')}:${String(bj.getMinutes()).padStart(2, '0')}:${String(bj.getSeconds()).padStart(2, '0')}`;
         }
 
         function triggerManualRefresh() {
             const timerBar = document.getElementById('live-clock-bar');
-            timerBar.style.opacity = '0.3';
-            runClock();
+            timerBar.style.opacity = '0.3'; runClock();
             setTimeout(() => { timerBar.style.opacity = '1'; }, 100);
         }
 
-        // ================= 🛠️ 升级：生成精简的数据暗号专属链接 =================
         function generateStandaloneUrl() {
-            // 读取当前输入框里的学号作为唯一暗号ID值
             const userId = document.getElementById('i-stuId').value; 
-            
             if(!userId || userId === "加载中...") {
-                alert('请确保控制台表单内的【学号】不为空！系统将以学号作为关联云端数据的唯一通行证。');
+                alert('请确保控制台表单内的【学号】不为空！');
                 return;
             }
-
             const standaloneUrl = window.location.origin + window.location.pathname + '?id=' + userId;
-            
             navigator.clipboard.writeText(standaloneUrl).then(() => {
-                alert('专属独立链接复制成功！\n\n链接地址：' + standaloneUrl + '\n\n⚠️ 重要提示：请务必确保在 GitHub 的 users.json 文件里已经同步配置了学号为【' + userId + '】的数据资料，否则用户打开链接会找不到卡片！');
+                alert('链接复制成功！\n\n' + standaloneUrl + '\n\n⚠️ 请确保已在 GitHub 的 users.json 中配置此用户数据！');
                 window.location.href = standaloneUrl;
             });
         }
 
         function closePanel() { document.getElementById('adminPanel').classList.remove('active'); }
 
-        // ================= 🔐 隐藏控制台“左手长按 + 右手点3下”跨双区高阶手势 =================
+        // ================= 🔐 隐藏控制台特工连招手势不变 =================
         const gestureArea = document.getElementById('gestureArea');
-        let leftFingerTimer = null;
-        let isLeftLongPressed = false; 
-        let rightClickCount = 0;       
-        let lastRightClickTime = 0;
+        let leftFingerTimer = null; let isLeftLongPressed = false; let rightClickCount = 0; let lastRightClickTime = 0;
 
         gestureArea.addEventListener('touchstart', function(e) {
-            e.preventDefault(); // 强行阻断 iOS 自带的双击放大与滚动干扰
-
-            // 【第一触点】检测到屏幕上首次放上一个手指
+            e.preventDefault();
             if (e.touches.length === 1) {
                 const touch = e.touches[0];
-                const screenWidth = window.innerWidth;
-
-                // 只有当按下的位置处于屏幕红栏的“左半边”时才判定有效
-                if (touch.clientX < screenWidth / 2) {
-                    leftFingerTimer = setTimeout(() => {
-                        isLeftLongPressed = true;
-                        rightClickCount = 0; // 长按 0.8 秒后，左手就位成功，等待右手连击
-                    }, 800); 
+                if (touch.clientX < window.innerWidth / 2) {
+                    leftFingerTimer = setTimeout(() => { isLeftLongPressed = true; rightClickCount = 0; }, 800); 
                 }
             }
-            
-            // 【多触点联动】左手保持按住不动，第二个触点（右手）也按下来时
             else if (e.touches.length === 2 && isLeftLongPressed) {
                 const touch2 = e.touches[1];
-                const screenWidth = window.innerWidth;
-
-                // 只有当右手敲击的位置处于红栏的“右半边”时才计入总数
-                if (touch2.clientX > screenWidth / 2) {
+                if (touch2.clientX > window.innerWidth / 2) {
                     const now = Date.now();
-                    // 右手点按速度保护：两次点击间隔如果超过了 0.6 秒，判定为手速过慢，计数自动过期
-                    if (now - lastRightClickTime > 600) {
-                        rightClickCount = 0;
-                    }
-                    lastRightClickTime = now;
-                    rightClickCount++;
-
-                    // 达成最终开锁：左边长按成功 + 右边迅速敲满 3 下
+                    if (now - lastRightClickTime > 600) rightClickCount = 0;
+                    lastRightClickTime = now; rightClickCount++;
                     if (rightClickCount === 3) {
                         document.getElementById('adminPanel').classList.add('active');
-                        // 状态初始化，防二次判定发生冲突
-                        isLeftLongPressed = false;
-                        rightClickCount = 0;
-                        if (navigator.vibrate) navigator.vibrate([40, 40, 40]); // 三连震震动反馈
+                        isLeftLongPressed = false; rightClickCount = 0;
+                        if (navigator.vibrate) navigator.vibrate([40, 40, 40]);
                     }
                 }
             }
         }, { passive: false });
 
-        // 任意一只手甚至全部手指离开屏幕时，彻底重置触控状态机
-        gestureArea.addEventListener('touchend', function(e) {
-            if (e.touches.length === 0) {
-                clearTimeout(leftFingerTimer);
-                isLeftLongPressed = false;
-                rightClickCount = 0;
-            }
-        });
+        gestureArea.addEventListener('touchend', function(e) { if (e.touches.length === 0) { clearTimeout(leftFingerTimer); isLeftLongPressed = false; rightClickCount = 0; } });
+        gestureArea.addEventListener('touchcancel', function() { clearTimeout(leftFingerTimer); isLeftLongPressed = false; rightClickCount = 0; });
 
-        gestureArea.addEventListener('touchcancel', function() {
-            clearTimeout(leftFingerTimer);
-            isLeftLongPressed = false;
-            rightClickCount = 0;
-        });
-
-        // 系统的正常初始化加载渲染
         parseUrlParams(); runClock(); setInterval(runClock, 1000); 
     </script>
 </body>
