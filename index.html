@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
- <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="校友卡">
- <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="format-detection" content="telephone=no, email=no, adress=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="校友卡">
     <title>校友卡</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif; }
@@ -15,12 +15,27 @@
         /* 大外壳背景色：1:1 还原微信官方原版浅灰白色 */
         .wx-container { width: 100%; max-width: 414px; background-color: #F7F7F7; display: flex; flex-direction: column; align-items: center; padding-bottom: 40px; min-height: 100vh; position: relative; }
         
-        /* 微信原版顶栏 1:1 复刻 */
-        .wx-nav { width: 100%; height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; color: #FFF; font-size: 16px; font-weight: bold; background-color: #A82E2E; position: relative; }
+        /* 🎨 核心修复：顶栏新增安全区域垫高，完美把状态栏染成红色 */
+        .wx-nav { 
+            width: 100%; 
+            /* 自动获取刘海/灵动岛高度并转为红色背景 padding */
+            padding-top: env(safe-area-inset-top, 20px); 
+            height: calc(48px + env(safe-area-inset-top, 20px)); 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding-left: 16px;
+            padding-right: 16px;
+            color: #FFF; 
+            font-size: 16px; 
+            font-weight: bold; 
+            background-color: #A82E2E; 
+            position: relative; 
+        }
         .wx-capsule { background: rgba(0, 0, 0, 0.12); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 16px; padding: 5px 12px; display: flex; gap: 12px; font-size: 14px; align-items: center; }
 
-        /* 🔒 顶栏隐藏控制台触发区域 */
-        .admin-trigger { position: absolute; top: 0; left: 30%; width: 40%; height: 48px; cursor: pointer; z-index: 99; -webkit-user-select: none; user-select: none; }
+        /* 🔒 顶栏隐藏控制台触发区域（同步顺移高度） */
+        .admin-trigger { position: absolute; top: env(safe-area-inset-top, 0px); left: 30%; width: 40%; height: 48px; cursor: pointer; z-index: 99; -webkit-user-select: none; user-select: none; }
 
         /* ================= 🪪 电子卡片主体 ================= */
         .alumni-card { 
@@ -34,6 +49,261 @@
             overflow: hidden; 
             margin-top: 14px; 
             box-shadow: 0 4px 14px rgba(0,0,0,0.08); 
+            position: relative;
+        }
+
+        .card-top-area { position: relative; width: 100%; height: calc(100% - 38px); }
+        .card-serial { position: absolute; top: 16px; right: 20px; font-size: 13px; font-family: "Courier New", Courier, monospace; font-weight: bold; color: rgba(255, 255, 255, 0.9); letter-spacing: 0.5px; }
+        
+        /* 📸 头像框绝对定位 */
+        .avatar-box { 
+            position: absolute;
+            top: 54px;
+            left: 20px;
+            width: 76px; 
+            height: 103px; 
+            background-color: #E3E3E3; 
+            border-radius: 2px; 
+            overflow: hidden; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            border: 1px solid rgba(255,255,255,0.2); 
+        }
+        .avatar-box img { 
+            width: 100%; 
+            height: 100%; 
+            object-fit: cover; 
+            display: block;
+        }
+        
+        /* 🛠 /> 数据排版区域 */
+        .info-fields { 
+            position: absolute;
+            top: 52px;
+            left: 114px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 5.5px; 
+        }
+        
+        .info-row { display: flex; align-items: center; height: 19px; line-height: 19px; }
+        
+        /* 🏷️ 标签样式：不加粗、自然左对齐 */
+        .info-label { 
+            font-size: 14.5px;
+            color: rgba(255, 255, 255, 0.95); 
+            font-weight: normal; 
+            flex-shrink: 0;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+        
+        /* ✏️ 内容数据样式：不加粗 */
+        .info-value { 
+            font-size: 14.5px;
+            font-weight: normal; 
+            color: #FFFFFF !important; 
+            text-decoration: none !important; 
+            pointer-events: none; 
+            white-space: nowrap;
+            letter-spacing: 0.5px;
+        }
+        
+        /* 🌟 底部金边文字区域 */
+        .card-gold-strip { height: 38px; width: 100%; position: absolute; bottom: 0; left: 0; display: flex; align-items: center; padding-left: 20px; font-size: 11px; color: #8A1A1D; font-weight: bold; letter-spacing: 0.8px; }
+
+        /* ================= 下半部分 ================= */
+        .white-panel { width: calc(100% - 24px); background: #FFFFFF; border-radius: 12px; margin-top: 14px; padding: 24px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.04); }
+        .qr-header-title { font-size: 15px; color: #333333; margin-bottom: 18px; font-weight: bold; letter-spacing: 0.5px; }
+        .qr-box-border { width: 205px; height: 205px; background: #FFF; border: 1px solid #E5E5E5; border-radius: 4px; display: flex; align-items: center; justify-content: center; padding: 8px; }
+        .qr-box-border img { width: 100%; height: 100%; object-fit: contain; }
+        
+        .refresh-lnk { margin-top: 14px; color: #999999; font-size: 13px; display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; }
+        .refresh-lnk:active { opacity: 0.6; }
+
+        .live-timer-container { width: 100%; background-color: #5C1315; color: #FFFFFF; text-align: center; padding: 13px 0; border-radius: 16px; margin-top: 24px; font-size: 14.5px; font-weight: bold; letter-spacing: 0.5px; transition: opacity 0.1s ease; }
+
+        /* ================= 🛠️ 控制面板 ================= */
+        .admin-panel { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.96); z-index: 999; padding: 20px; color: #fff; overflow-y: auto; }
+        .admin-panel.active { display: block; }
+        .admin-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; font-size: 12px; margin-bottom: 4px; color: #ccc; }
+        .form-group input { width: 100%; height: 38px; border: none; border-radius: 4px; padding: 0 10px; font-size: 14px; color: #333; outline: none; }
+        .panel-btn { width: 100%; height: 44px; background: #C9262B; color: #fff; border: none; border-radius: 4px; margin-top: 10px; font-weight: bold; font-size: 14px; cursor: pointer; }
+        
+        .random-badge-btn-block { width: 100%; height: 44px; background: #5C1315; color: #fff; border: 1px solid #C9262B; border-radius: 4px; margin-top: 15px; font-weight: bold; font-size: 14px; cursor: pointer; letter-spacing: 0.5px; }
+        .random-badge-btn-block:active { transform: scale(0.99); background: #C9262B; }
+    </style>
+</head>
+<body>
+
+    <div class="wx-container">
+        <div class="admin-trigger" id="gestureArea"></div>
+        
+        <div class="wx-nav">
+            <span>〈 校友卡</span>
+            <div class="wx-capsule"><span>•••</span> <span>●</span></div>
+        </div>
+
+        <div class="alumni-card">
+            <div class="card-top-area">
+                <div class="card-serial" id="v-cardId">JCCUT20160892</div>
+                
+                <div class="avatar-box">
+                    <img id="v-avatar" src="avatar.png" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'46\' height=\'46\' viewBox=\'0 0 24 24\' fill=\'%23D2D2D2\'><path d=\'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5-3.33-8-3.33z\'/></svg>'">
+                </div>
+
+                <div class="info-fields">
+                    <div class="info-row"><div class="info-label">姓名：</div><div class="info-value" id="v-name">唐海林</div></div>
+                    <div class="info-row"><div class="info-label">学号：</div><div class="info-value" id="v-stuId">2016211020208</div></div>
+                    <div class="info-row"><div class="info-label">院系：</div><div class="info-value" id="v-department">经济与管理学院</div></div>
+                    <div class="info-row"><div class="info-label">专业：</div><div class="info-value" id="v-major">财务管理</div></div>
+                    <div class="info-row"><div class="info-label">毕业年份：</div><div class="info-value" id="v-gradYear">2020</div></div>
+                </div>
+            </div>
+            <div class="card-gold-strip" style="opacity: 1;">
+                <span>● 荆楚理工学院校友会 ALUMNI ASSOCIATION</span>
+            </div>
+        </div>
+
+        <div class="white-panel">
+            <div class="qr-header-title">校友二维码</div>
+            <div class="qr-box-border">
+                <img id="v-qr" src="qr.png" alt="二维码">
+            </div>
+            <div class="refresh-lnk" onclick="triggerManualRefresh()">↻ 刷新</div>
+            
+            <div class="live-timer-container" id="live-clock-bar">当前时间：读取中...</div>
+        </div>
+    </div>
+
+    <div class="admin-panel" id="adminPanel">
+        <div class="admin-panel-header">
+            <h3 style="color:#C9262B; font-size:18px;">荆楚理工学院控制台</h3>
+        </div>
+        <div style="background: rgba(199, 38, 43, 0.15); border: 1px solid #C9262B; padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 11px; color: #ffbcbc; line-height: 1.5;">
+            <strong>⚠️ 技术演示与娱乐免责提示：</strong><br>
+            本项目属于纯前端视觉技术原型，仅供技术交流与娱乐演示。严禁用于任何形式的伪造欺骗或其它违反国家法律的非法用途。使用者自身承担全部责任。
+        </div>
+        <div class="form-group"><label>右上角卡号</label><input type="text" id="i-cardId" value="JCCUT20160892"></div>
+        <div class="form-group"><label>姓名</label><input type="text" id="i-name" value="唐海林"></div>
+        <div class="form-group"><label>学号</label><input type="text" id="i-stuId" value="2016211020208"></div>
+        <div class="form-group"><label>院系</label><input type="text" id="i-department" value="经济与管理学院"></div>
+        <div class="form-group"><label>专业</label><input type="text" id="i-major" value="财务管理"></div>
+        <div class="form-group"><label>毕业年份</label><input type="text" id="i-gradYear" value="2020"></div>
+        
+        <button class="random-badge-btn-block" onclick="generateRandomStuId()">🎲 随机专业与学号(2016-2020)</button>
+        <button class="panel-btn" onclick="generateStandaloneUrl()">生成并复制该用户的专属独立链接</button>
+        <button class="panel-btn" style="background:#444;" onclick="closePanel()">关闭控制台</button>
+    </div>
+
+    <script>
+        let currentConfig = { cardId: "JCCUT20160892", name: "唐海林", stuId: "2016211020208", department: "经济与管理学院", major: "财务管理", gradYear: "2020" };
+
+        const jcMajorDatabase = [
+            { dept: "经济与管理学院", major: "财务管理", code: "21102" },
+            { dept: "经济与管理学院", major: "大数据与会计", code: "30502" },
+            { dept: "医学部", major: "口腔医学（专升本）", code: "21102" },
+            { dept: "师范学院", major: "小学教育", code: "40850" },
+            { dept: "新能源学院", major: "印刷工程（专升本）", code: "2420101" }, 
+            { dept: "食品与生物学院", major: "植物科学与技术（专升本）", code: "2420703" }, 
+            { dept: "食品与生物学院", major: "食品科学与工程", code: "2424407" }, 
+            { dept: "数理学院", major: "数学与应用数学", code: "09500" },
+            { dept: "艺术学院", major: "环境设计", code: "12050" },
+            { dept: "外国语学院", major: "外国语言文学", code: "10500" }
+        ];
+
+        const firstNames = ["张", "李", "王", "刘", "陈", "杨", "赵", "黄", "周", "吴", "徐", "孙", "马", "胡", "郭", "林"];
+        const lastNames = ["逸飞", "梦溪", "泽宇", "梓涵", "听风", "晓静", "嘉杰", "雨桐", "博远", "子墨", "瑞霖", "思源", "楚菁", "雪珂", "海林"];
+
+        function parseUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            Object.keys(currentConfig).forEach(key => {
+                const val = params.get(key);
+                if (val !== null) { currentConfig[key] = val; document.getElementById('i-' + key).value = val; }
+            });
+            renderDomData();
+        }
+
+        function renderDomData() {
+            document.getElementById('v-cardId').innerText = currentConfig.cardId;
+            document.getElementById('v-name').innerText = currentConfig.name;
+            document.getElementById('v-stuId').innerText = currentConfig.stuId;
+            document.getElementById('v-department').innerText = currentConfig.department;
+            document.getElementById('v-major').innerText = currentConfig.major;
+            document.getElementById('v-gradYear').innerText = currentConfig.gradYear;
+        }
+
+        function generateRandomStuId() {
+            const startYear = Math.floor(Math.random() * (2020 - 2016 + 1)) + 2016;
+            const randomMajorMeta = jcMajorDatabase[Math.floor(Math.random() * jcMajorDatabase.length)];
+            const fixedCode = randomMajorMeta.code;
+            
+            const classNum = String(Math.floor(Math.random() * 3) + 1).padStart(2, '0');
+            const seatNum = String(Math.floor(Math.random() * 40) + 1).padStart(2, '0');
+            
+            const finalStuId = `${startYear}${fixedCode}${classNum}${seatNum}`;
+            const gradYear = startYear + 4;
+            const randomName = firstNames[Math.floor(Math.random() * firstNames.length)] + lastNames[Math.floor(Math.random() * lastNames.length)];
+
+            document.getElementById('i-stuId').value = finalStuId;
+            document.getElementById('i-name').value = randomName;
+            document.getElementById('i-department').value = randomMajorMeta.dept;
+            document.getElementById('i-major').value = randomMajorMeta.major;
+            document.getElementById('i-gradYear').value = gradYear;
+            document.getElementById('i-cardId').value = `JCCUT${startYear}0${Math.floor(Math.random() * 80) + 10}`;
+        }
+
+        function runClock() {
+            const d = new Date();
+            const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+            const bj = new Date(utc + (3600000 * 8));
+            const year = bj.getFullYear();
+            const month = String(bj.getMonth() + 1).padStart(2, '0');
+            const day = String(bj.getDate()).padStart(2, '0');
+            const h = String(bj.getHours()).padStart(2, '0');
+            const m = String(bj.getMinutes()).padStart(2, '0');
+            const s = String(bj.getSeconds()).padStart(2, '0');
+            document.getElementById('live-clock-bar').innerText = `当前时间：${year}年${month}月${day}日 ${h}:${m}:${s}`;
+        }
+
+        function triggerManualRefresh() {
+            const timerBar = document.getElementById('live-clock-bar');
+            timerBar.style.opacity = '0.3';
+            runClock();
+            setTimeout(() => { timerBar.style.opacity = '1'; }, 100);
+        }
+
+        function generateStandaloneUrl() {
+            const newParams = new URLSearchParams();
+            Object.keys(currentConfig).forEach(key => { newParams.set(key, document.getElementById('i-' + key).value); });
+            const standaloneUrl = window.location.origin + window.location.pathname + '?' + newParams.toString();
+            navigator.clipboard.writeText(standaloneUrl).then(() => { alert('配置已应用！对应独立运行网址已成功复制到剪贴板。'); window.location.href = standaloneUrl; });
+        }
+
+        function closePanel() { document.getElementById('adminPanel').classList.remove('active'); }
+
+        const gestureArea = document.getElementById('gestureArea');
+        let clickCount = 0; let lastClickTime = 0;
+        gestureArea.addEventListener('click', function(e) {
+            e.preventDefault(); const now = Date.now();
+            if (now - lastClickTime > 500) { clickCount = 0; }
+            lastClickTime = now; clickCount++;
+            if (clickCount === 6) { document.getElementById('adminPanel').classList.add('active'); clickCount = 0; }
+        });
+        gestureArea.addEventListener('touchstart', function(e) {
+            const now = Date.now();
+            if (now - lastClickTime > 500) { clickCount = 0; }
+            lastClickTime = now; clickCount++;
+            if (clickCount === 6) { e.preventDefault(); document.getElementById('adminPanel').classList.add('active'); clickCount = 0; }
+        });
+
+        parseUrlParams(); runClock(); setInterval(runClock, 1000); 
+    </script>
+</body>
+</html>
             position: relative;
         }
 
