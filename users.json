@@ -1,3 +1,4 @@
+{
   "01thl": {
     "name": "唐海林",
     "stuId": "2016211020115",
@@ -33,12 +34,14 @@
     "major": "财务管理",
     "gradYear": "2020",
     "status": "active"
-    "thl16": {
+  },
+  "thl16": {
     "name": "唐海林",
     "stuId": "2016305020116",
     "cardId": "JCCUT2016099",
     "department": "经济与管理学院",
     "major": "大数据与会计",
-    "gradYear": "2020"
-  },
-  },
+    "gradYear": "2020",
+    "status": "active"
+  }
+}
