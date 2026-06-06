@@ -40,8 +40,8 @@
         /* 📸 头像框绝对定位 */
         .avatar-box { 
             position: absolute;
-            top: 54px;
-            left: 20px;
+            top: 30px;
+            left: 15px;
             width: 76px; 
             height: 103px; 
             background-color: #E3E3E3; 
@@ -59,11 +59,11 @@
             display: block;
         }
         
-        /* 🛠️ 数据排版区域 */
+        /* 🛠️ 数据排版区域：紧贴头像右侧，整体靠左排列 */
         .info-fields { 
             position: absolute;
-            top: 52px;
-            left: 124px; 
+            top: 26px;
+            left: 109px; 
             display: flex; 
             flex-direction: column; 
             gap: 5.5px; 
@@ -71,22 +71,20 @@
         
         .info-row { display: flex; align-items: center; height: 19px; line-height: 19px; }
         
-        /* 🏷️ 核心优化：标签文字同步加粗（bold），颜色调为纯白，与内容完美统一 */
+        /* 🏷️ 标签样式：移除粗体、移除多余宽度，使其自然左对齐 */
         .info-label { 
-            width: 85px; 
-            text-align: left; 
-            font-size: 14px;
-            color: #FFFFFF !important; /* 调整为纯白 */
-            font-weight: bold; /* 彻底加粗，去除单薄感 */
+            font-size: 14.5px;
+            color: rgba(255, 255, 255, 0.95); 
+            font-weight: normal; /* 彻底不加粗 */
             flex-shrink: 0;
             letter-spacing: 0.5px;
             white-space: nowrap;
         }
         
-        /* ✏️ 右侧数据动态文本样式 */
+        /* ✏️ 内容数据样式：移除粗体，紧跟在标签后面 */
         .info-value { 
             font-size: 14.5px;
-            font-weight: bold; 
+            font-weight: normal; /* 彻底不加粗 */
             color: #FFFFFF !important; 
             text-decoration: none !important; 
             pointer-events: none; 
@@ -140,15 +138,14 @@
                 </div>
 
                 <div class="info-fields">
-                    <div class="info-row"><div class="info-label">姓&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;名：</div><div class="info-value" id="v-name">唐海林</div></div>
-                    <div class="info-row"><div class="info-label">学&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;号：</div><div class="info-value" id="v-stuId">2016211020208</div></div>
-                    <div class="info-row"><div class="info-label">院&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;系：</div><div class="info-value" id="v-department">经济与管理学院</div></div>
-                    <div class="info-row"><div class="info-label">专&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;业：</div><div class="info-value" id="v-major">财务管理</div></div>
+                    <div class="info-row"><div class="info-label">姓名：</div><div class="info-value" id="v-name">唐海林</div></div>
+                    <div class="info-row"><div class="info-label">学号：</div><div class="info-value" id="v-stuId">2016211020208</div></div>
+                    <div class="info-row"><div class="info-label">院系：</div><div class="info-value" id="v-department">经济与管理学院</div></div>
+                    <div class="info-row"><div class="info-label">专业：</div><div class="info-value" id="v-major">财务管理</div></div>
                     <div class="info-row"><div class="info-label">毕业年份：</div><div class="info-value" id="v-gradYear">2020</div></div>
                 </div>
             </div>
             <div class="card-gold-strip" style="opacity: 1;">
-               
             </div>
         </div>
 
@@ -288,3 +285,4 @@
     </script>
 </body>
 </html>
+
