@@ -101,7 +101,7 @@
         function getDeviceFingerprint() { return 'DEV-' + Math.abs(window.screen.width * window.screen.height); }
         
         function tryNavigateToCard() {
-            if (!isCurrentLinkValid) { alert('链接无效'); return; }
+            if (!isCurrentLinkValid) { alert('未查询到您的校友卡，请实名。'); return; }
             const key = `lock_${currentUserId}`;
             if (!localStorage.getItem(key)) {
                 if(confirm("【首次激活提示】\n检测到您是第一次在当前设备访问。\n\n⚠️ 重要说明：\n本链接已与您的当前设备自动绑定，今后仅允许在本台设备上打开。请确认是否继续？")) {
