@@ -40,7 +40,7 @@
         /* ================= 🪪 电子卡片主体 ================= */
         .alumni-card { 
             width: calc(100% - 24px); 
-            height: 236px; 
+            height: 220px; 
             background-color: #BD262A; 
             background-image: url('card-bg.png'); /* 纯空白底图 */
             background-size: 100% 100%; 
@@ -55,27 +55,9 @@
         .card-top-area { position: relative; width: 100%; height: calc(100% - 38px); }
         .card-serial { position: absolute; top: 16px; right: 20px; font-size: 13px; font-family: "Courier New", Courier, monospace; font-weight: bold; color: rgba(255, 255, 255, 0.9); letter-spacing: 0.5px; }
         
-         /* 📸 头像框绝对定位 */
-        .avatar-box { 
-            display: none;⁠
-            position: absolute;
-            top: 30px;
-            left: 12px;
-            width: 82px; 
-            height: 111px; 
-            background-color: #E3E3E3; 
-            border-radius: 2px; 
-            overflow: hidden; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            border: 1px solid rgba(255,255,255,0.2); 
-        }
-        .avatar-box img { 
-            width: 100%; 
-            height: 100%; 
-            object-fit: cover; 
-            display: block;
+        /* 📸 头像框绝杀隐藏：防止样式意外被重新唤醒覆盖 */
+        .avatar-box, .avatar-box img { 
+            display: none !important; 
         }
         
        /* 🛠️ 数据排版区域：紧贴头像右侧，整体靠左排列 */
@@ -305,4 +287,3 @@
     </script>
 </body>
 </html>
-
