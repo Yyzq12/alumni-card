@@ -6,51 +6,39 @@
     <meta name="format-detection" content="telephone=no, email=no, adress=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="荆楚理工学院-移动校园">
+    <meta name="apple-mobile-web-app-title" content="荆楚理工学院 移动校园">
     <link rel="apple-touch-icon" href="icon.png">
 
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
 
-    <title>荆楚理工学院-移动校园</title>
+    <title>荆楚理工学院 移动校园</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif; }
         body { background-color: #EDEBE9; display: flex; flex-direction: column; align-items: center; min-height: 100vh; position: relative; }
-        
         .wx-container { width: 100%; max-width: 414px; background-color: #F7F7F7; display: flex; flex-direction: column; align-items: center; min-height: 100vh; position: relative; }
-        
         .wx-nav { width: 100%; padding-top: env(safe-area-inset-top, 44px); height: calc(48px + env(safe-area-inset-top, 44px)); display: flex; align-items: center; justify-content: space-between; padding-left: 16px; padding-right: 16px; color: #FFF; font-size: 16px; font-weight: bold; background-color: #A82E2E; position: relative; z-index: 100; }
         .wx-capsule { background: rgba(0, 0, 0, 0.12); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 16px; padding: 5px 12px; display: flex; gap: 12px; font-size: 14px; align-items: center; }
-
         .admin-trigger { position: fixed; top: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 414px; height: calc(60px + env(safe-area-inset-top, 44px)); cursor: pointer; z-index: 99999; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; background: transparent; }
-
         #page-home { width: 100%; display: flex; flex-direction: column; position: relative; background: #FFF; min-height: calc(100vh - 48px - env(safe-area-inset-top, 44px)); padding-bottom: 80px; }
         .home-mock-bg { width: 100%; display: block; object-fit: contain; }
-        
-        /* 🎯 校友卡入口（已移除背景色，完全隐形） */
         .hotspot-alumni-card { position: absolute; top: 35%; left: 25%; width: 20%; height: 15%; cursor: pointer; z-index: 50; -webkit-tap-highlight-color: transparent; }
-
         #page-card { width: 100%; display: none; flex-direction: column; align-items: center; } 
         .alumni-card { width: calc(100% - 24px); height: 220px; background-color: #BD262A; background-image: url('card-bg.png'); background-size: 100% 100%; background-repeat: no-repeat; border-radius: 12px; overflow: hidden; margin-top: 14px; box-shadow: 0 4px 14px rgba(0,0,0,0.08); position: relative; }
         .card-top-area { position: relative; width: 100%; height: calc(100% - 38px); }
         .card-serial { position: absolute; top: 16px; right: 20px; font-size: 13px; font-family: "Courier New", Courier, monospace; font-weight: bold; color: rgba(255, 255, 255, 0.9); letter-spacing: 0.5px; }
-        
-        .avatar-box, .avatar-box img { display: none !important; }
         .info-fields { position: absolute; top: 26px; left: 109px; display: flex; flex-direction: column; gap: 2.5px; }
         .info-row { display: flex; align-items: center; height: 19px; line-height: 19px; }
         .info-label { font-size: 14.5px; color: rgba(255, 255, 255, 0.95); font-weight: normal; flex-shrink: 0; letter-spacing: 0.5px; white-space: nowrap; }
         .info-value { font-size: 14.5px; font-weight: normal; color: #FFFFFF !important; text-decoration: none !important; pointer-events: none; white-space: nowrap; letter-spacing: 0.5px; }
         .card-gold-strip { height: 38px; width: 100%; position: absolute; bottom: 0; left: 0; display: flex; align-items: center; padding-left: 20px; font-size: 11px; color: #8A1A1D; font-weight: bold; letter-spacing: 0.8px; }
-
         .white-panel { width: calc(100% - 24px); background: #FFFFFF; border-radius: 12px; margin-top: 14px; padding: 24px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.04); }
         .qr-header-title { font-size: 15px; color: #333333; margin-bottom: 18px; font-weight: bold; letter-spacing: 0.5px; }
         .qr-box-border { width: 205px; height: 205px; background: #FFF; border: 1px solid #E5E5E5; border-radius: 4px; display: flex; align-items: center; justify-content: center; padding: 8px; }
         .qr-box-border img { width: 100%; height: 100%; object-fit: contain; }
-        
         .refresh-lnk { margin-top: 14px; color: #999999; font-size: 13px; display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; }
         .live-timer-container { width: 100%; background-color: #5C1315; color: #FFFFFF; text-align: center; padding: 13px 0; border-radius: 16px; margin-top: 24px; font-size: 14.5px; font-weight: bold; letter-spacing: 0.5px; }
-
         .admin-panel { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.96); z-index: 100000; padding: 20px; color: #fff; overflow-y: auto; }
         .admin-panel.active { display: block; }
         .admin-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
@@ -109,19 +97,31 @@
         <button class="panel-btn" style="background:#444;" onclick="closePanel()">关闭控制台</button>
     </div>
     <script>
-        // JS 逻辑保持不变，确保功能完整
         let isCurrentLinkValid = false; let currentUserId = "";
         function getDeviceFingerprint() { return 'DEV-' + Math.abs(window.screen.width * window.screen.height); }
-        function checkDeviceLock(userId) { const key = `lock_${userId}`; const saved = localStorage.getItem(key); if(!saved) { localStorage.setItem(key, getDeviceFingerprint()); return true; } return saved === getDeviceFingerprint(); }
+        
+        function tryNavigateToCard() {
+            if (!isCurrentLinkValid) { alert('链接无效'); return; }
+            const key = `lock_${currentUserId}`;
+            if (!localStorage.getItem(key)) {
+                if(confirm("【首次激活提示】\n检测到您是第一次在当前设备访问。\n\n⚠️ 重要说明：\n本链接已与您的当前设备自动绑定，今后仅允许在本台设备上打开。请确认是否继续？")) {
+                    localStorage.setItem(key, getDeviceFingerprint());
+                    forceGoToCardPage();
+                }
+            } else if (localStorage.getItem(key) === getDeviceFingerprint()) {
+                forceGoToCardPage();
+            } else {
+                alert('【安全警告】\n该校友卡已绑定其他设备，当前设备无法访问。');
+            }
+        }
+
         function resetDeviceLock() { localStorage.removeItem(`lock_${currentUserId}`); alert('已重置'); window.location.reload(); }
-        function tryNavigateToCard() { if(isCurrentLinkValid && checkDeviceLock(currentUserId)) { forceGoToCardPage(); } else { alert('无权限或设备锁定'); } }
         function forceGoToCardPage() { document.getElementById('page-home').style.display = 'none'; document.getElementById('page-card').style.display = 'flex'; document.getElementById('nav-title').innerText = '校友卡'; document.getElementById('nav-back-btn').style.visibility = 'visible'; }
         function navigateToHome() { document.getElementById('page-card').style.display = 'none'; document.getElementById('page-home').style.display = 'flex'; document.getElementById('nav-title').innerText = '首页'; document.getElementById('nav-back-btn').style.visibility = 'hidden'; }
         function parseUrlParams() { const id = new URLSearchParams(window.location.search).get('id'); currentUserId = id; if(!id) return; fetch('users.json?t='+Date.now()).then(r=>r.json()).then(d=>{ if(d[id]) { isCurrentLinkValid=true; const u=d[id]; document.getElementById('v-cardId').innerText=u.cardId; document.getElementById('v-name').innerText=u.name; document.getElementById('v-stuId').innerText=u.stuId; document.getElementById('v-department').innerText=u.department; document.getElementById('v-major').innerText=u.major; document.getElementById('v-gradYear').innerText=u.gradYear; } }); }
-        function runClock() { const d=new Date(); document.getElementById('live-clock-bar').innerText=`当前时间：${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 ${d.getHours()}:${d.getMinutes()}:${d.getSeconds()}`; }
+        function runClock() { const d=new Date(); document.getElementById('live-clock-bar').innerText=`当前时间：${d.getFullYear()}年${String(d.getMonth()+1).padStart(2,'0')}月${String(d.getDate()).padStart(2,'0')}日 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`; }
         function triggerManualRefresh() { runClock(); }
         function closePanel() { document.getElementById('adminPanel').classList.remove('active'); }
-        // 简化的手势触发逻辑
         document.getElementById('gestureArea').addEventListener('touchstart', (e)=>{ if(e.touches.length==3) document.getElementById('adminPanel').classList.add('active'); });
         navigateToHome(); parseUrlParams(); setInterval(runClock, 1000);
     </script>
