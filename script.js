@@ -274,7 +274,7 @@ function showHome() {
 
 async function tryNavigateToCard() {
     if (!isCardDataValid) {
-        showToast('暂未识别到您的校友信息，请确认链接完整');
+        showToast('暂未识别到您的校友信息。');
         return;
     }
     const uid = currentUserId;
@@ -288,13 +288,13 @@ async function tryNavigateToCard() {
         const userData = JSON.parse(raw);
         if (userData.activated) {
             if (userData.deviceId !== deviceId) {
-                showToast('设备验证失败，该校友卡已在其他设备绑定');
+                showToast('设备验证失败，该校友卡已在其他设备激活绑定');
                 return;
             }
             showCard();
             return;
         }
-        const ok = await showConfirm('点击"确定"后，此校友卡将与当前设备锁定绑定。', '欢迎使用校友卡');
+        const ok = await showConfirm('这是您首次在此设备上打开该链接点击"确定"后，此校友卡将与当前设备锁定绑定。', '欢迎使用校友卡');
         if (ok) {
             userData.activated = true;
             userData.deviceId = deviceId;
