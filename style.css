@@ -1,5 +1,5 @@
 /* ==========================================
-   荆楚理工学院 移动校园 - 样式表 (优化注册按钮布局)
+   荆楚理工学院 移动校园 - 样式表 (无审核/注册UI)
    ========================================== */
 
 :root {
@@ -354,101 +354,7 @@ body {
 .custom-modal-btn.cancel { color: #999; border-right: 1px solid #eee; }
 .custom-modal-btn.confirm { color: var(--theme-red); font-weight: bold; }
 
-/* ---------- 注册按钮和模态框（优化比例） ---------- */
-.register-btn {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: var(--theme-red);
-    color: white;
-    padding: 10px 16px;
-    border-radius: 40px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    cursor: pointer;
-    z-index: 200;
-    font-weight: bold;
-    font-size: 14px;
-    /* 确保不与底部安全区冲突 */
-    margin-bottom: env(safe-area-inset-bottom, 0);
-}
-/* 防止注册按钮遮挡热区（热区在图片上半部分，按钮在底部，无冲突） */
-@media (max-width: 374px) {
-    .register-btn {
-        padding: 8px 14px;
-        font-size: 12px;
-        bottom: 15px;
-        right: 15px;
-    }
-}
-.register-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.7);
-    z-index: 100000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.register-modal-content {
-    width: 85%;
-    max-width: 320px;
-    background: #fff;
-    border-radius: 16px;
-    overflow: hidden;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-}
-.register-modal-header {
-    background: var(--theme-red);
-    color: #fff;
-    padding: 14px;
-    text-align: center;
-    font-weight: bold;
-    font-size: 16px;
-}
-.register-modal-body {
-    padding: 20px 16px;
-    color: #333;
-}
-.register-modal-body .form-group {
-    margin-bottom: 12px;
-}
-.register-modal-body .form-group label {
-    display: block;
-    font-size: 13px;
-    margin-bottom: 4px;
-    color: #555;
-}
-.register-modal-body .form-group input {
-    width: 100%;
-    padding: 8px 10px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    font-size: 14px;
-}
-.register-modal-footer {
-    display: flex;
-    border-top: 1px solid #eee;
-}
-.register-modal-footer button {
-    flex: 1;
-    padding: 12px;
-    border: none;
-    cursor: pointer;
-    font-size: 14px;
-}
-.register-modal-footer button:first-child {
-    background: #f5f5f5;
-    color: #333;
-}
-.register-modal-footer button:last-child {
-    background: #28a745;
-    color: white;
-}
-
-/* 响应式微调 */
+/* 响应式 */
 @media (max-width: 374px) {
     .info-label, .info-value { font-size: 13px; }
     .card-serial { font-size: 11px; }
