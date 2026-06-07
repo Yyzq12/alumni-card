@@ -29,7 +29,7 @@
         <div class="wx-nav">
             <!-- 返回按钮，默认隐藏，仅在卡片页显示 -->
             <span id="nav-back-btn" onclick="navigateToHome()" style="cursor:pointer; visibility: hidden;">〈 首页</span>
-            <!-- 导航栏标题，根据页面切换“首页”或“校友卡” -->
+            <!-- 导航栏标题，根据页面切换"首页"或"校友卡" -->
             <span id="nav-title">首页</span>
             <!-- 模拟微信胶囊按钮（纯装饰） -->
             <div class="wx-capsule"><span>•••</span> <span>●</span></div>
@@ -91,7 +91,7 @@
         
         <!-- 表单字段，id 对应 script.js 中的变量，修改默认值直接改 value 属性即可 -->
         <div class="form-group"><label>右上角卡号</label><input type="text" id="i-cardId" value="JCCUT20160892"></div>
-        <div class="form-group"><label>姓名（自动计算拼音缩写并生成短ID）</label><input type="text" id="i-name" value="唐海林"></div>
+        <div class="form-group"><label>姓名（自动计算拼音缩写并生成短ID）</label><input type="text" id="i-name" value="唐寒露"></div>
         <div class="form-group"><label>学号（卡片展示完整学号，短ID取最后两位）</label><input type="text" id="i-stuId" value="2016211020208"></div>
         <div class="form-group"><label>院系</label><input type="text" id="i-department" value="经济与管理学院"></div>
         <div class="form-group"><label>专业</label><input type="text" id="i-major" value="财务管理"></div>
@@ -99,16 +99,18 @@
         
         <!-- 按钮 -->
         <button class="random-badge-btn-block" onclick="generateRandomStuId()">🎲 随机专业与学号(2016-2020)</button>
-        <button class="panel-btn" style="background:#28a745; color:#fff;" onclick="generateStandaloneUrl()">🚀 生成并复制专属链接与JSON</button>
-        <button class="panel-btn" style="background:#ff9f43; color:#fff;" onclick="resetDeviceLock()">🔓 重置当前用户的设备锁</button>
+        <button class="panel-btn" style="background:#28a745; color:#fff;" onclick="generateStandaloneUrl()">🚀 生成并复制链接</button>
+        <button class="panel-btn" style="background:#5bc0de; color:#fff;" onclick="listAlumni()">📋 查看所有校友</button>
+        <button class="panel-btn" style="background:#d9534f; color:#fff;" onclick="deleteAlumni()">🗑️ 删除校友</button>
+        <button class="panel-btn" style="background:#ff9f43; color:#fff;" onclick="resetDeviceLock()">🔓 重置设备锁</button>
         <button class="panel-btn" style="background:#444;" onclick="closePanel()">关闭控制台</button>
 
         <!-- 使用说明书 -->
         <div class="help-doc-box">
             <h4>📖 使用指南</h4>
             <ol>
-                <li>填写或随机生成校友信息，点击 <strong>“生成并复制”</strong>。</li>
-                <li>复制成功后，在电脑端打开 <span class="code-mark">users.json</span>，将剪贴板中的 JSON 代码粘贴进去。</li>
+                <li>填写或随机生成校友信息，点击 <strong>"生成并复制"</strong>。</li>
+                <li>数据会自动保存到云端，链接已复制到剪贴板。</li>
                 <li>用生成的短链接（<span class="code-mark">?id=xxx</span>）即可访问该校友的电子卡片。</li>
             </ol>
             <h4>🔍 短ID计算规则</h4>
