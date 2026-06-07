@@ -1,6 +1,6 @@
 /* ==========================================
-   荆楚理工学院 移动校园 - 最终版（含审核功能 + 注册 UI）
-   特性：控制台内嵌表格、专业列、按时间排序、删除确认显示姓名、待审核列表、审核通过/拒绝
+   荆楚理工学院 移动校园 - 最终完整版
+   包含：注册 UI、审核功能、校友列表管理、设备锁、Canvas指纹等
    ========================================== */
 
 'use strict';
@@ -84,7 +84,6 @@ const CONTROL_PASSWORD = "5499";
 const UPSTASH_URL = "https://becoming-trout-101437.upstash.io";
 const UPSTASH_TOKEN = "gQAAAAAAAYw9AAIgcDE2ZjBmNDdkMTIyZTU0MzFlOGNhNTlkYzk1OWU1OTBjOA";
 
-// 控制台 HTML（新增“待审核校友”按钮）
 const ADMIN_PANEL_HTML = `
     <div class="admin-panel" id="adminPanel" style="display: block;">
         <div class="admin-panel-header">
@@ -390,14 +389,12 @@ async function copyToClipboard(text) {
     }
 }
 
-// 生成唯一短ID（带碰撞重试）
 async function generateUniqueShortId(baseName, baseStuId, maxRetries = 3) {
     let shortId = getChinesePinyinInitials(baseName) + baseStuId.slice(-2);
     let retry = 0;
     while (retry < maxRetries) {
         const exists = await redis('EXISTS', `user:${shortId}`);
         if (exists === 0) return shortId;
-        // 碰撞时在学号后两位加随机数字
         const suffix = String(Math.floor(Math.random() * 90) + 10);
         shortId = getChinesePinyinInitials(baseName) + baseStuId.slice(-2) + suffix.slice(-2);
         retry++;
@@ -430,8 +427,8 @@ async function generate() {
         }
         await redis('SET', `user:${shortId}`, JSON.stringify({
             cardId, name, stuId, department, major, gradYear,
-            activated: false,        // 设备绑定状态
-            approved: true,          // 后台生成默认审核通过
+            activated: false,
+            approved: true,        // 后台生成默认审核通过
             deviceId: null,
             createdAt: Date.now()
         }));
@@ -489,7 +486,6 @@ async function loadAlumniTable(forceRefresh = false) {
                 const vals = await redis('MGET', ...userKeys);
                 for (let j = 0; j < batchIds.length; j++) {
                     const u = JSON.parse(vals[j] || '{}');
-                    // 只显示已审核的校友
                     if (u.approved !== false) {
                         list.push({
                             id: batchIds[j],
@@ -523,7 +519,7 @@ async function loadAlumniTable(forceRefresh = false) {
                     <th style="padding:8px 4px; text-align:left; width:15%;">短ID</th>
                     <th style="padding:8px 4px; text-align:left; width:40%;">专业</th>
                     <th style="padding:8px 4px; text-align:center; width:20%;">操作</th>
-                 </tr>
+                </tr>
             </thead>
             <tbody>`;
         for (const item of alumniList) {
@@ -538,7 +534,7 @@ async function loadAlumniTable(forceRefresh = false) {
                 <td style="padding:6px 4px; text-align:center;">
                     <button onclick="window.deleteAlumniById('${item.id}')" style="background:#d9534f; border:none; color:#fff; padding:2px 10px; border-radius:3px; cursor:pointer;">删除</button>
                 </td>
-             </tr>`;
+            </tr>`;
         }
         html += `</tbody></table>`;
         container.innerHTML = html;
@@ -576,14 +572,13 @@ window.deleteAlumniById = async function(id) {
         localStorage.removeItem(ALUMNI_CACHE_KEY);
         showToast(`已删除校友 ${name}`);
         await loadAlumniTable(true);
-        // 同时刷新待审核列表（如果打开）
         if (window._pendingListOpen) await showPendingList();
     } catch (e) {
         showToast(`删除失败：${e.message}`);
     }
 };
 
-// ------------------- 待审核列表（审核通过/拒绝） -------------------
+// ------------------- 待审核列表 -------------------
 window.showPendingList = async function() {
     const container = document.getElementById('alumni-table-container');
     const headerDiv = document.getElementById('alumni-header');
@@ -647,7 +642,7 @@ window.showPendingList = async function() {
                     <button onclick="window.approveAlumni('${item.id}')" style="background:#28a745; border:none; color:#fff; padding:2px 8px; border-radius:3px; margin-right:4px; cursor:pointer;">通过</button>
                     <button onclick="window.rejectAlumni('${item.id}')" style="background:#d9534f; border:none; color:#fff; padding:2px 8px; border-radius:3px; cursor:pointer;">拒绝</button>
                 </td>
-             </tr>`;
+            </tr>`;
         }
         html += `</tbody></table>`;
         container.innerHTML = html;
@@ -670,8 +665,8 @@ window.approveAlumni = async function(id) {
         userData.approved = true;
         await redis('SET', `user:${id}`, JSON.stringify(userData));
         showToast(`已通过 ${userData.name || id} 的审核`);
-        await showPendingList();  // 刷新待审核列表
-        await loadAlumniTable(true); // 刷新已审核表格（如果打开）
+        await showPendingList();
+        await loadAlumniTable(true);
     } catch (e) {
         showToast(`操作失败：${e.message}`);
     }
@@ -699,12 +694,112 @@ window.rejectAlumni = async function(id) {
     }
 };
 
-// 兼容旧 list 函数
-async function list(forceRefresh = false) {
-    await loadAlumniTable(forceRefresh);
+// ------------------- 注册功能 -------------------
+let currentCaptcha = { text: '', answer: 0 };
+
+function generateCaptcha() {
+    const a = Math.floor(Math.random() * 10);
+    const b = Math.floor(Math.random() * 10);
+    currentCaptcha = {
+        text: `${a} + ${b} = ?`,
+        answer: a + b
+    };
+    const captchaSpan = document.getElementById('captcha-question');
+    if (captchaSpan) captchaSpan.innerText = currentCaptcha.text;
 }
 
-// ------------------- 12. 三指手势打开控制台 -------------------
+function showRegisterModal() {
+    const modal = document.getElementById('register-modal');
+    if (!modal) return;
+    generateCaptcha();
+    modal.style.display = 'flex';
+    // 清空表单
+    document.getElementById('reg-name').value = '';
+    document.getElementById('reg-stuId').value = '';
+    document.getElementById('reg-department').value = '';
+    document.getElementById('reg-major').value = '';
+    document.getElementById('reg-gradYear').value = '';
+    document.getElementById('reg-captcha').value = '';
+}
+
+function closeRegisterModal() {
+    const modal = document.getElementById('register-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function submitRegister() {
+    const name = document.getElementById('reg-name').value.trim();
+    const stuId = document.getElementById('reg-stuId').value.trim();
+    const department = document.getElementById('reg-department').value.trim() || '未填写';
+    const major = document.getElementById('reg-major').value.trim() || '未填写';
+    const gradYear = document.getElementById('reg-gradYear').value.trim() || '2020';
+    const captcha = document.getElementById('reg-captcha').value.trim();
+
+    if (!name || !stuId) {
+        showToast('姓名和学号不能为空');
+        return;
+    }
+    if (parseInt(captcha) !== currentCaptcha.answer) {
+        showToast('验证码错误');
+        generateCaptcha();
+        return;
+    }
+
+    // 频率限制（同一浏览器每天最多注册3次）
+    const REG_LIMIT_KEY = 'reg_limit';
+    const today = new Date().toDateString();
+    const regLimitRaw = localStorage.getItem(REG_LIMIT_KEY);
+    if (regLimitRaw) {
+        const { date, count } = JSON.parse(regLimitRaw);
+        if (date === today && count >= 3) {
+            showToast('今日注册次数已达上限，请明天再试');
+            return;
+        }
+    }
+
+    try {
+        const shortId = await generateUniqueShortId(name, stuId);
+        const cardId = `JCCUT${gradYear}0${Math.floor(Math.random() * 80) + 10}`;
+        const userData = {
+            cardId,
+            name,
+            stuId,
+            department,
+            major,
+            gradYear,
+            activated: false,
+            approved: false,      // 需要管理员审核
+            deviceId: null,
+            createdAt: Date.now()
+        };
+        await redis('SET', `user:${shortId}`, JSON.stringify(userData));
+        await redis('SADD', 'alumni:index', shortId);
+        
+        // 更新注册次数
+        let newCount = 1;
+        if (regLimitRaw) {
+            const { date, count } = JSON.parse(regLimitRaw);
+            if (date === today) newCount = count + 1;
+        }
+        localStorage.setItem(REG_LIMIT_KEY, JSON.stringify({ date: today, count: newCount }));
+        
+        showToast(`注册成功！您的校友卡ID：${shortId}，请等待管理员审核`);
+        closeRegisterModal();
+        
+        // 可选：询问是否复制短ID
+        const copy = await showConfirm(`您的短ID为 ${shortId}，是否复制链接以便后续查看？`, '注册信息');
+        if (copy) {
+            const link = `${window.location.origin}${window.location.pathname.replace(/\/$/, '')}?id=${shortId}`;
+            await copyToClipboard(link);
+            showToast('链接已复制到剪贴板，审核通过后可访问');
+        }
+    } catch (e) {
+        console.error(e);
+        showToast(`注册失败：${e.message}`);
+    }
+}
+
+// ------------------- 三指手势打开控制台 -------------------
 const gestureArea = document.getElementById('gestureArea');
 if (gestureArea) {
     gestureArea.addEventListener('touchstart', async (e) => {
@@ -747,7 +842,7 @@ function closePanel() {
     window._pendingListOpen = false;
 }
 
-// ------------------- 13. 北京时间时钟 + 刷新按钮旋转 -------------------
+// ------------------- 北京时间时钟 & 刷新按钮旋转 -------------------
 function updateClock() {
     const now = new Date();
     const beijing = new Date(now.getTime() + now.getTimezoneOffset() * 60000 + 28800000);
@@ -763,7 +858,7 @@ function triggerManualRefresh() {
     updateClock();
 }
 
-// ------------------- 14. 启动 -------------------
+// ------------------- 启动 -------------------
 showHome();
 load();
 updateClock();
@@ -775,10 +870,12 @@ window.tryNavigateToCard = tryNavigateToCard;
 window.triggerManualRefresh = triggerManualRefresh;
 window.random = random;
 window.generate = generate;
-window.list = list;
 window.resetDeviceLock = resetDeviceLock;
 window.closePanel = closePanel;
 window.deleteAlumniById = deleteAlumniById;
 window.showPendingList = showPendingList;
 window.approveAlumni = approveAlumni;
 window.rejectAlumni = rejectAlumni;
+window.showRegisterModal = showRegisterModal;
+window.closeRegisterModal = closeRegisterModal;
+window.submitRegister = submitRegister;
