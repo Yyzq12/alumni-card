@@ -1,17 +1,384 @@
-/* ---------- 注册按钮和模态框 ---------- */
+/* ==========================================
+   荆楚理工学院 移动校园 - 样式表 (优化注册按钮布局)
+   ========================================== */
+
+:root {
+    --theme-red: #A82E2E;
+    --card-red: #BD262A;
+    --bg-gray: #EDEBE9;
+    --container-bg: #F7F7F7;
+    --gold-dark: #8A1A1D;
+    --white: #FFFFFF;
+    --skeleton-grad: linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    background-color: var(--bg-gray);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+}
+.wx-container {
+    width: 100%;
+    max-width: 414px;
+    background-color: var(--container-bg);
+    min-height: 100vh;
+    position: relative;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+}
+/* 导航栏 */
+.wx-nav {
+    width: 100%;
+    padding-top: env(safe-area-inset-top, 44px);
+    height: calc(48px + env(safe-area-inset-top, 44px));
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    color: var(--white);
+    font-weight: bold;
+    background-color: var(--theme-red);
+}
+.wx-capsule {
+    background: rgba(0,0,0,0.12);
+    border-radius: 16px;
+    padding: 5px 12px;
+    display: flex;
+    gap: 12px;
+}
+.admin-trigger {
+    position: fixed;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 414px;
+    height: calc(60px + env(safe-area-inset-top, 44px));
+    z-index: 99999;
+    background: transparent;
+}
+/* 首页 */
+#page-home {
+    width: 100%;
+    background: var(--white);
+    min-height: calc(100vh - 48px - env(safe-area-inset-top, 44px));
+    position: relative;
+}
+.home-mock-bg {
+    width: 100%;
+    display: block;
+    object-fit: contain;
+}
+.hotspot-alumni-card {
+    position: absolute;
+    top: 35%;
+    left: 25%;
+    width: 20%;
+    height: 15%;
+    cursor: pointer;
+}
+/* 校友卡 */
+#page-card {
+    width: 100%;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+}
+.alumni-card {
+    width: calc(100% - 24px);
+    height: 220px;
+    background-color: var(--card-red);
+    background-image: url('card-bg.png');
+    background-size: 100% 100%;
+    border-radius: 12px;
+    margin-top: 14px;
+    position: relative;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+}
+.card-top-area {
+    height: calc(100% - 38px);
+    position: relative;
+}
+.card-serial {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    font-size: 13px;
+    font-family: monospace;
+    color: rgba(255,255,255,0.9);
+}
+.info-fields {
+    position: absolute;
+    top: 26px;
+    left: 109px;
+    display: flex;
+    flex-direction: column;
+    gap: 2.5px;
+}
+.info-row {
+    display: flex;
+    align-items: center;
+    height: 19px;
+}
+.info-label {
+    font-size: 14.5px;
+    color: rgba(255,255,255,0.95);
+    white-space: nowrap;
+}
+.info-value {
+    font-size: 14.5px;
+    color: var(--white) !important;
+    white-space: nowrap;
+    transition: all 0.2s;
+}
+/* 骨架屏样式 */
+.skeleton {
+    background: var(--skeleton-grad);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.2s infinite;
+    border-radius: 4px;
+    color: transparent !important;
+    user-select: none;
+    min-width: 4em;
+    display: inline-block;
+}
+@keyframes skeleton-loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+.card-gold-strip {
+    height: 38px;
+    width: 100%;
+    position: absolute;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    padding-left: 20px;
+    font-size: 11px;
+    color: var(--gold-dark);
+    font-weight: bold;
+}
+.white-panel {
+    width: calc(100% - 24px);
+    background: var(--white);
+    border-radius: 12px;
+    margin-top: 14px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+}
+.qr-header-title {
+    font-size: 15px;
+    color: #333;
+    margin-bottom: 18px;
+    font-weight: bold;
+}
+.qr-box-border {
+    width: 205px;
+    height: 205px;
+    border: 1px solid #E5E5E5;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+}
+.qr-box-border img {
+    max-width: 100%;
+    max-height: 100%;
+}
+.refresh-lnk {
+    margin-top: 14px;
+    color: #999;
+    font-size: 13px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: transform 0.2s;
+}
+.refresh-lnk.rotating {
+    animation: rotate360 0.5s ease-in-out;
+}
+@keyframes rotate360 {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+.live-timer-container {
+    width: 100%;
+    background-color: #5C1315;
+    color: var(--white);
+    text-align: center;
+    padding: 13px 0;
+    border-radius: 16px;
+    margin-top: 24px;
+    font-weight: bold;
+}
+/* 控制台动态面板样式 */
+.admin-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.96);
+    z-index: 100000;
+    padding: 20px;
+    color: var(--white);
+    overflow-y: auto;
+}
+.disclaimer {
+    background: rgba(199,38,43,0.15);
+    border: 1px solid #C9262B;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    font-size: 11px;
+    color: #ffbcbc;
+}
+.form-group {
+    margin-bottom: 12px;
+}
+.form-group label {
+    display: block;
+    font-size: 12px;
+    margin-bottom: 4px;
+    color: #ccc;
+}
+.form-group input {
+    width: 100%;
+    height: 38px;
+    border: none;
+    border-radius: 4px;
+    padding: 0 10px;
+    font-size: 14px;
+    color: #333;
+}
+.panel-btn, .random-badge-btn-block {
+    width: 100%;
+    height: 44px;
+    border: none;
+    border-radius: 4px;
+    margin-top: 10px;
+    font-weight: bold;
+    font-size: 14px;
+    cursor: pointer;
+}
+.panel-btn {
+    background: #C9262B;
+    color: var(--white);
+}
+.random-badge-btn-block {
+    background: #5C1315;
+    color: var(--white);
+    border: 1px solid #C9262B;
+}
+/* 自定义弹窗 */
+.custom-toast {
+    position: fixed;
+    bottom: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.8);
+    color: var(--white);
+    padding: 8px 16px;
+    border-radius: 24px;
+    z-index: 100001;
+    animation: fadeInUp 0.2s ease;
+}
+.custom-toast.fade-out {
+    animation: fadeOutDown 0.2s forwards;
+}
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+@keyframes fadeOutDown {
+    from { opacity: 1; transform: translateX(-50%) translateY(0); }
+    to { opacity: 0; transform: translateX(-50%) translateY(10px); }
+}
+.custom-modal-mask {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 100002;
+}
+.custom-modal-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 280px;
+    background: var(--white);
+    border-radius: 12px;
+    overflow: hidden;
+    z-index: 100003;
+}
+.custom-modal-header {
+    background: var(--theme-red);
+    color: var(--white);
+    padding: 12px;
+    text-align: center;
+    font-weight: bold;
+}
+.custom-modal-body {
+    padding: 20px;
+    text-align: center;
+    color: #333;
+}
+.custom-modal-footer {
+    display: flex;
+    border-top: 1px solid #eee;
+}
+.custom-modal-btn {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    background: var(--white);
+    cursor: pointer;
+}
+.custom-modal-btn.cancel { color: #999; border-right: 1px solid #eee; }
+.custom-modal-btn.confirm { color: var(--theme-red); font-weight: bold; }
+
+/* ---------- 注册按钮和模态框（优化比例） ---------- */
 .register-btn {
     position: fixed;
     bottom: 20px;
     right: 20px;
     background: var(--theme-red);
     color: white;
-    padding: 12px 18px;
+    padding: 10px 16px;
     border-radius: 40px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     cursor: pointer;
     z-index: 200;
     font-weight: bold;
     font-size: 14px;
+    /* 确保不与底部安全区冲突 */
+    margin-bottom: env(safe-area-inset-bottom, 0);
+}
+/* 防止注册按钮遮挡热区（热区在图片上半部分，按钮在底部，无冲突） */
+@media (max-width: 374px) {
+    .register-btn {
+        padding: 8px 14px;
+        font-size: 12px;
+        bottom: 15px;
+        right: 15px;
+    }
 }
 .register-modal {
     position: fixed;
@@ -26,21 +393,40 @@
     justify-content: center;
 }
 .register-modal-content {
-    width: 300px;
+    width: 85%;
+    max-width: 320px;
     background: #fff;
-    border-radius: 12px;
+    border-radius: 16px;
     overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
 }
 .register-modal-header {
     background: var(--theme-red);
     color: #fff;
-    padding: 12px;
+    padding: 14px;
     text-align: center;
     font-weight: bold;
+    font-size: 16px;
 }
 .register-modal-body {
-    padding: 16px;
+    padding: 20px 16px;
     color: #333;
+}
+.register-modal-body .form-group {
+    margin-bottom: 12px;
+}
+.register-modal-body .form-group label {
+    display: block;
+    font-size: 13px;
+    margin-bottom: 4px;
+    color: #555;
+}
+.register-modal-body .form-group input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
 }
 .register-modal-footer {
     display: flex;
@@ -48,9 +434,10 @@
 }
 .register-modal-footer button {
     flex: 1;
-    padding: 10px;
+    padding: 12px;
     border: none;
     cursor: pointer;
+    font-size: 14px;
 }
 .register-modal-footer button:first-child {
     background: #f5f5f5;
@@ -59,4 +446,14 @@
 .register-modal-footer button:last-child {
     background: #28a745;
     color: white;
+}
+
+/* 响应式微调 */
+@media (max-width: 374px) {
+    .info-label, .info-value { font-size: 13px; }
+    .card-serial { font-size: 11px; }
+    .white-panel { padding: 18px; }
+}
+@media (min-width: 415px) {
+    body { background-color: #d0cfce; }
 }
