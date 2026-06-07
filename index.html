@@ -15,7 +15,6 @@
     <link rel="dns-prefetch" href="https://becoming-trout-101437.upstash.io">
     <link rel="preconnect" href="https://becoming-trout-101437.upstash.io">
 
-    <!-- 预加载关键图片，提升首屏渲染速度 -->
     <link rel="preload" as="image" href="home-bg.png">
     <link rel="preload" as="image" href="card-bg.png">
 
@@ -61,6 +60,28 @@
                 <div class="live-timer-container" id="live-clock-bar">当前时间：读取中...</div>
             </div>
         </section>
+    </div>
+
+    <!-- 注册按钮（固定在右下角） -->
+    <div class="register-btn" onclick="showRegisterModal()">📝 注册校友卡</div>
+
+    <!-- 注册模态框 -->
+    <div id="register-modal" class="register-modal" style="display:none;">
+        <div class="register-modal-content">
+            <div class="register-modal-header">校友注册</div>
+            <div class="register-modal-body">
+                <div class="form-group"><label>姓名 *</label><input type="text" id="reg-name" placeholder="请填写真实姓名"></div>
+                <div class="form-group"><label>学号 *</label><input type="text" id="reg-stuId" placeholder="学号"></div>
+                <div class="form-group"><label>院系</label><input type="text" id="reg-department" placeholder="如：经济与管理学院"></div>
+                <div class="form-group"><label>专业</label><input type="text" id="reg-major" placeholder="如：财务管理"></div>
+                <div class="form-group"><label>毕业年份</label><input type="number" id="reg-gradYear" placeholder="2020"></div>
+                <div class="form-group"><label>验证码</label><div><span id="captcha-question">5 + 3 = ?</span> <input type="text" id="reg-captcha" style="width:80px; margin-left:10px;"></div></div>
+            </div>
+            <div class="register-modal-footer">
+                <button onclick="closeRegisterModal()">取消</button>
+                <button onclick="submitRegister()" style="background:#28a745; color:white;">立即注册</button>
+            </div>
+        </div>
     </div>
 
     <script src="script.js"></script>
