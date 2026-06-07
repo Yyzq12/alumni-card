@@ -182,7 +182,17 @@ function showHome() {
 async function tryNavigateToCard() {
     // 检查数据是否有效
     if (!isCardDataValid) {
-        alert('暂未识别到您的校友信息\n\n请确认链接是否正确。');
+        alert(
+            '📭 暂未识别到您的校友信息\n\n' +
+            '可能的原因：\n' +
+            '① 链接不完整或已失效\n' +
+            '② 该校友信息尚未录入系统\n' +
+            '③ 网络不稳定导致加载失败\n\n' +
+            '💡 解决方法：\n' +
+            '请确认您使用的是管理员发送的完整链接\n' +
+            '或联系管理员核实校友信息是否已录入。\n\n' +
+            '如有疑问，请联系校友会管理员。'
+        );
         return;
     }
 
@@ -193,7 +203,14 @@ async function tryNavigateToCard() {
         // 从云端获取校友数据
         const raw = await redis('GET', `user:${uid}`);
         if (!raw) {
-            alert('校友卡不存在。\n\n该链接可能已失效，请联系管理员。');
+            alert(
+                '🔍 未找到该校友卡\n\n' +
+                '该链接对应的校友信息不存在。\n\n' +
+                '💡 可能原因：\n' +
+                '① 链接输入有误\n' +
+                '② 校友信息已被管理员删除\n\n' +
+                '请重新确认链接，或联系管理员获取最新链接。'
+            );
             return;
         }
 
@@ -203,7 +220,12 @@ async function tryNavigateToCard() {
         if (u.activated) {
             if (u.deviceId !== did) {
                 // 设备ID不匹配 → 拦截
-                alert('🔒 该校友卡已绑定其他设备。\n\n为保障安全，当前设备无法访问。');
+                alert(
+                    '🔒 设备验证失败\n\n' +
+                    '该校友卡已在其他设备上激活绑定。\n' +
+                    '为保障校友信息安全，一个链接仅限一台设备使用。\n\n' +
+                    '💡 如需更换设备，请联系管理员重置绑定。'
+                );
                 return;
             }
             // 设备匹配 → 直接进入
@@ -212,7 +234,15 @@ async function tryNavigateToCard() {
         }
 
         // 情况2：未激活 → 询问是否绑定
-        if (confirm('【首次激活】\n\n该校友卡尚未绑定设备。\n\n点击"确定"将与此设备永久绑定，\n绑定后其他设备无法使用此链接。\n\n确认进行绑定吗？')) {
+        if (confirm(
+            '🎓 欢迎使用荆楚理工学院校友卡\n\n' +
+            '这是您首次在此设备上打开该链接。\n\n' +
+            '📌 设备绑定说明：\n' +
+            '点击"确定"后，此校友卡将与当前设备绑定。\n' +
+            '绑定后仅限本设备查看，其他设备无法打开。\n\n' +
+            '如需更换设备，可联系管理员解除绑定。\n\n' +
+            '确认绑定此设备吗？'
+        )) {
             // 记录激活状态和设备ID
             u.activated = true;
             u.deviceId = did;
@@ -222,7 +252,14 @@ async function tryNavigateToCard() {
         // 如果点取消，什么也不做，留在首页
     } catch (e) {
         console.error('设备锁验证失败:', e);
-        alert('网络异常，无法验证设备身份。\n\n请检查网络连接后重试。');
+        alert(
+            '🌐 网络连接异常\n\n' +
+            '无法连接到服务器验证您的身份。\n\n' +
+            '💡 请检查：\n' +
+            '① 手机网络是否正常\n' +
+            '② 是否处于信号较弱的环境\n\n' +
+            '确认网络正常后，请刷新页面重试。'
+        );
     }
 }
 
@@ -408,13 +445,37 @@ async function generate() {
         isCardDataValid = true;
         render();
 
-        // 复制链接到剪贴板
+        // 🔧 增强版自动复制（兼容所有浏览器）
+        let copied = false;
+        
+        // 方法1：现代浏览器 Clipboard API
         try {
             await navigator.clipboard.writeText(url);
+            copied = true;
+        } catch(e) {}
+
+        // 方法2：传统方法（创建临时输入框，兼容老设备和微信等）
+        if (!copied) {
+            try {
+                const ta = document.createElement('textarea');
+                ta.value = url;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                ta.style.top = '-9999px';
+                document.body.appendChild(ta);
+                ta.focus();
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                copied = true;
+            } catch(e) {}
+        }
+
+        // 根据复制结果显示不同弹窗
+        if (copied) {
             alert(`🎉 生成成功！\n\n短ID：${id}\n链接已自动复制到剪贴板。\n\n将链接发送给校友即可使用。`);
-        } catch (e) {
-            // 如果浏览器不支持自动复制，弹出手动复制框
-            prompt('请手动复制以下链接：', url);
+        } else {
+            prompt('生成成功！\n\n短ID：' + id + '\n请手动复制以下链接：', url);
         }
     } catch (e) {
         console.error('保存失败:', e);
@@ -423,6 +484,7 @@ async function generate() {
 }
 
 /**
+ /**
  * 【📋 查看所有校友】功能
  * 从云端获取所有校友数据，以列表形式弹窗显示
  */
@@ -438,16 +500,13 @@ async function list() {
         // 批量获取所有值
         const vals = await redis('MGET', ...keys);
         
-        // 格式化显示
+        // 格式化显示（只显示姓名、短ID、激活状态）
         let t = `📋 共 ${keys.length} 位校友：\n\n`;
         keys.forEach((k, i) => {
             const u = JSON.parse(vals[i] || '{}');
-            t += `${i + 1}. ${u.name}（${u.stuId}）\n`;
+            t += `${i + 1}. ${u.name}\n`;
             t += `   短ID: ${k.replace('user:', '')}\n`;
-            t += `   院系: ${u.department} | 专业: ${u.major}\n`;
-            t += `   毕业年份: ${u.gradYear}届\n`;
-            t += `   状态: ${u.activated ? '✅ 已激活' : '⏳ 未激活'}\n`;
-            t += `   卡号: ${u.cardId}\n\n`;
+            t += `   状态: ${u.activated ? '✅ 已激活' : '⏳ 未激活'}\n\n`;
         });
         
         alert(t);
@@ -455,7 +514,6 @@ async function list() {
         alert('❌ 获取列表失败：' + e.message);
     }
 }
-
 /**
  * 【🗑️ 删除校友】功能
  * 从云端删除指定短ID的校友数据
