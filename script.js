@@ -429,41 +429,35 @@ async function list() {
 
         const vals = await redis('MGET', ...keys);
         
-        // 构建表格
-        let t = `📋 校友列表 · 共 ${keys.length} 位\n\n`;
-        t += `┌────┬──────────┬────────────┐\n`;
-        t += `│序号│ 状态     │ 姓名 · 短ID  │\n`;
-        t += `├────┼──────────┼────────────┤\n`;
+        let t = `共 ${keys.length} 位校友\n\n`;
         
         keys.forEach((k, i) => {
             const u = JSON.parse(vals[i] || '{}');
             const dot = u.activated ? '🟢' : '🔴';
-            const status = u.activated ? '已激活' : '未激活';
-            const name = u.name || '?';
-            const sid = k.replace('user:', '');
-            const line = `${name} · ${sid}`;
-            // 补全角空格对齐
-            const pad = '　'.repeat(Math.max(0, 8 - name.length - sid.length));
-            t += `│ ${String(i+1).padStart(2)} │ ${dot}${status} │ ${line}${pad}│\n`;
+            // 姓名对齐：两字姓名中间加1个全角空格，使其宽度等于三字姓名
+            let name = u.name || '?';
+            if (name.length === 2) {
+                name = name[0] + '　' + name[1]; // ← 只加1个全角空格
+            }
+            t += `${dot} ${name} · ${k.replace('user:', '')}\n`;
         });
         
-        t += `└────┴──────────┴────────────┘\n`;
-        t += `\n💬 点击【确定】可删除指定校友`;
+        t += `\n点击【确定】可删除校友`;
 
         if (confirm(t)) {
             const id = prompt('输入要删除的短ID：');
-            if (id && confirm(`⚠️ 确认删除 "${id}" 吗？`)) {
+            if (id && confirm(`确认删除 ${id}？`)) {
                 const exists = await redis('EXISTS', `user:${id}`);
                 if (!exists) {
-                    alert(`❌ "${id}" 不存在`);
+                    alert(`${id} 不存在`);
                 } else {
                     await redis('DEL', `user:${id}`);
-                    alert(`✅ "${id}" 已删除`);
+                    alert(`${id} 已删除`);
                 }
             }
         }
     } catch (e) {
-        alert('❌ 加载失败：' + e.message);
+        alert('加载失败：' + e.message);
     }
 }
 
