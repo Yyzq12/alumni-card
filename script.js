@@ -188,10 +188,6 @@ async function tryNavigateToCard() {
             '① 链接不完整或已失效\n' +
             '② 该校友信息尚未录入系统\n' +
             '③ 网络不稳定导致加载失败\n\n' +
-            '💡 解决方法：\n' +
-            '请确认您使用的是管理员发送的完整链接\n' +
-            '或联系管理员核实校友信息是否已录入。\n\n' +
-            '如有疑问，请联系校友会管理员。'
         );
         return;
     }
@@ -209,7 +205,7 @@ async function tryNavigateToCard() {
                 '💡 可能原因：\n' +
                 '① 链接输入有误\n' +
                 '② 校友信息已被管理员删除\n\n' +
-                '请重新确认链接，或联系管理员获取最新链接。'
+            
             );
             return;
         }
@@ -224,7 +220,7 @@ async function tryNavigateToCard() {
                     '🔒 设备验证失败\n\n' +
                     '该校友卡已在其他设备上激活绑定。\n' +
                     '为保障校友信息安全，一个链接仅限一台设备使用。\n\n' +
-                    '💡 如需更换设备，请联系管理员重置绑定。'
+            
                 );
                 return;
             }
@@ -235,12 +231,12 @@ async function tryNavigateToCard() {
 
         // 情况2：未激活 → 询问是否绑定
         if (confirm(
-            '🎓 欢迎使用荆楚理工学院校友卡\n\n' +
+   
             '这是您首次在此设备上打开该链接。\n\n' +
             '📌 设备绑定说明：\n' +
             '点击"确定"后，此校友卡将与当前设备绑定。\n' +
             '绑定后仅限本设备查看，其他设备无法打开。\n\n' +
-            '如需更换设备，可联系管理员解除绑定。\n\n' +
+   
             '确认绑定此设备吗？'
         )) {
             // 记录激活状态和设备ID
@@ -392,13 +388,6 @@ function random() {
 /**
  * 【🚀 生成并复制链接】功能
  * 将表单中的校友信息保存到云端，生成专属短链接并复制到剪贴板
- * 
- * 流程：
- * 1. 读取表单数据
- * 2. 计算短ID（拼音首字母 + 学号后两位）
- * 3. 检查短ID是否已存在
- * 4. 保存到云端 Redis
- * 5. 生成链接并复制到剪贴板
  */
 async function generate() {
     // 读取表单数据
@@ -417,26 +406,52 @@ async function generate() {
         return;
     }
 
-    // 计算短ID：拼音首字母缩写 + 学号最后两位
+    // 计算短ID和链接
     const id = getChinesePinyinInitials(c.name) + c.stuId.slice(-2);
-    
-    // 构建专属链接
     const url = window.location.origin + window.location.pathname.replace(/\/$/, '') + '?id=' + id;
 
+    // 🔧 关键修复：先同步复制链接（在异步操作之前）
+    let copied = false;
+    try {
+        // 方法1：Clipboard API
+        await navigator.clipboard.writeText(url);
+        copied = true;
+    } catch(e) {}
+
+    if (!copied) {
+        try {
+            // 方法2：传统方法
+            const ta = document.createElement('textarea');
+            ta.value = url;
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            ta.style.top = '-9999px';
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            copied = true;
+        } catch(e) {}
+    }
+
+    // 复制完成后，再执行异步操作（保存到云端）
     try {
         // 检查短ID是否已存在
         const exists = await redis('EXISTS', `user:${id}`);
         if (exists) {
-            alert(`⚠️ 短ID "${id}" 已存在。\n\n请更换姓名或学号后重试。`);
+            if (copied) {
+                alert(`⚠️ 短ID "${id}" 已存在。\n\n链接已复制，但该ID无法重复保存。\n请更换姓名或学号后重新生成。`);
+            }
             return;
         }
 
-        // 保存到云端（初始状态：未激活，未绑定设备）
+        // 保存到云端
         await redis('SET', `user:${id}`, JSON.stringify({
             ...c,
-            activated: false,     // 未激活
-            deviceId: null,       // 未绑定设备
-            createdAt: Date.now() // 创建时间
+            activated: false,
+            deviceId: null,
+            createdAt: Date.now()
         }));
 
         // 更新本地预览
@@ -445,44 +460,21 @@ async function generate() {
         isCardDataValid = true;
         render();
 
-        // 🔧 增强版自动复制（兼容所有浏览器）
-        let copied = false;
-        
-        // 方法1：现代浏览器 Clipboard API
-        try {
-            await navigator.clipboard.writeText(url);
-            copied = true;
-        } catch(e) {}
-
-        // 方法2：传统方法（创建临时输入框，兼容老设备和微信等）
-        if (!copied) {
-            try {
-                const ta = document.createElement('textarea');
-                ta.value = url;
-                ta.style.position = 'fixed';
-                ta.style.left = '-9999px';
-                ta.style.top = '-9999px';
-                document.body.appendChild(ta);
-                ta.focus();
-                ta.select();
-                document.execCommand('copy');
-                document.body.removeChild(ta);
-                copied = true;
-            } catch(e) {}
-        }
-
-        // 根据复制结果显示不同弹窗
+        // 显示结果
         if (copied) {
-            alert(`🎉 生成成功！\n\n短ID：${id}\n链接已自动复制到剪贴板。\n\n将链接发送给校友即可使用。`);
+            alert(`🎉 生成成功！\n\n短ID：${id}\n链接已复制到剪贴板。`);
         } else {
-            prompt('生成成功！\n\n短ID：' + id + '\n请手动复制以下链接：', url);
+            prompt('生成成功！\n\n请手动复制以下链接：', url);
         }
     } catch (e) {
         console.error('保存失败:', e);
-        alert('❌ 保存失败：' + e.message + '\n\n请检查网络连接后重试。');
+        if (copied) {
+            alert('⚠️ 云端保存失败，但链接已复制到剪贴板。\n\n错误：' + e.message);
+        } else {
+            alert('❌ 操作失败：' + e.message);
+        }
     }
 }
-
 /**
  /**
  * 【📋 查看所有校友】功能
