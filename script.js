@@ -1,6 +1,6 @@
 /* ==========================================
-   荆楚理工学院 移动校园 - 最终版（无强制刷新按钮，自动刷新表格）
-   特性：控制台内嵌表格（含专业列），无操作限流，生成/删除后自动强制刷新
+   荆楚理工学院 移动校园 - 最终版（按添加时间排序，表格列宽优化）
+   特性：控制台内嵌表格（含专业列），无操作限流，自动排序（新在前）
    ========================================== */
 
 'use strict';
@@ -277,7 +277,7 @@ async function tryNavigateToCard() {
             showCard();
             return;
         }
-        const ok = await showConfirm('点击"确定"后，此校友卡将与当前设备绑定，他人将无法使用。', '欢迎使用校友卡');
+        const ok = await showConfirm('点击"确定"后，此校友卡将与当前设备锁定绑定。', '欢迎使用校友卡');
         if (ok) {
             userData.activated = true;
             userData.deviceId = deviceId;
@@ -430,7 +430,7 @@ async function generate() {
     }
 }
 
-// ------------------- 校友表格相关函数（含专业列）-------------------
+// ------------------- 校友表格相关函数（含专业列、排序、列宽调整）-------------------
 const ALUMNI_CACHE_KEY = 'alumni_list_cache';
 const CACHE_TTL = 5 * 60 * 1000;
 
@@ -471,12 +471,18 @@ async function loadAlumniTable(forceRefresh = false) {
                         id: batchIds[j],
                         name: u.name || '?',
                         major: u.major || '—',
-                        activated: u.activated || false
+                        activated: u.activated || false,
+                        createdAt: u.createdAt || 0
                     });
                 }
             }
             alumniList = list;
+            // 按创建时间降序排序（新添加的在前）
+            alumniList.sort((a, b) => b.createdAt - a.createdAt);
             localStorage.setItem(ALUMNI_CACHE_KEY, JSON.stringify({ data: alumniList, timestamp: Date.now() }));
+        } else {
+            // 如果从缓存读取，也需要确保排序（缓存已排序，但以防万一）
+            alumniList.sort((a, b) => b.createdAt - a.createdAt);
         }
         
         headerDiv.innerText = `共 ${alumniList.length} 位校友`;
@@ -486,13 +492,14 @@ async function loadAlumniTable(forceRefresh = false) {
             return;
         }
         
+        // 列宽调整：状态列加大至10%，避免标题竖排；其余列相应微调
         let html = `<table style="width:100%; border-collapse:collapse; color:#fff; font-size:13px;">
             <thead>
                 <tr style="border-bottom:2px solid #555;">
-                    <th style="padding:8px 4px; text-align:left; width:5%;">状态</th>
+                    <th style="padding:8px 4px; text-align:left; width:10%;">状态</th>
                     <th style="padding:8px 4px; text-align:left; width:15%;">姓名</th>
                     <th style="padding:8px 4px; text-align:left; width:15%;">短ID</th>
-                    <th style="padding:8px 4px; text-align:left; width:45%;">专业</th>
+                    <th style="padding:8px 4px; text-align:left; width:40%;">专业</th>
                     <th style="padding:8px 4px; text-align:center; width:20%;">操作</th>
                 </tr>
             </thead>
@@ -509,9 +516,9 @@ async function loadAlumniTable(forceRefresh = false) {
                 <td style="padding:6px 4px; text-align:center;">
                     <button onclick="window.deleteAlumniById('${item.id}')" style="background:#d9534f; border:none; color:#fff; padding:2px 10px; border-radius:3px; cursor:pointer;">删除</button>
                 </td>
-            </tr>`;
+            <tr>`;
         }
-        html += `</tbody></table>`;
+        html += `</tbody><tr>`;
         container.innerHTML = html;
     } catch (e) {
         console.error('加载校友表格失败', e);
@@ -538,7 +545,7 @@ window.deleteAlumniById = async function(id) {
         await redis('SREM', 'alumni:index', id);
         localStorage.removeItem(ALUMNI_CACHE_KEY);
         showToast(`${id} 已删除`);
-        await loadAlumniTable(true); // 强制刷新表格
+        await loadAlumniTable(true);
     } catch (e) {
         showToast(`删除失败：${e.message}`);
     }
