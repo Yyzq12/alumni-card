@@ -1,467 +1,663 @@
 /* ==========================================
-   荆楚理工学院 移动校园 - 样式表（完整修复版）
-   包含：基础样式、导航栏、校友卡、控制台、自定义弹窗
+   荆楚理工学院 移动校园 - 核心逻辑 (最终极致版)
+   特性：动态控制台、Canvas指纹、校友列表(排序/复制/删除)、自定义弹窗、无限流
    ========================================== */
 
-/* ---------- 全局重置 ---------- */
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+'use strict';
+
+// ------------------- 1. DOM 节点缓存 -------------------
+const DOM = {
+    pageHome: document.getElementById('page-home'),
+    pageCard: document.getElementById('page-card'),
+    navTitle: document.getElementById('nav-title'),
+    navBackBtn: document.getElementById('nav-back-btn'),
+    vCardId: document.getElementById('v-cardId'),
+    vName: document.getElementById('v-name'),
+    vStuId: document.getElementById('v-stuId'),
+    vDepartment: document.getElementById('v-department'),
+    vMajor: document.getElementById('v-major'),
+    vGradYear: document.getElementById('v-gradYear'),
+    liveClockBar: document.getElementById('live-clock-bar'),
+    iCardId: null,
+    iName: null,
+    iStuId: null,
+    iDepartment: null,
+    iMajor: null,
+    iGradYear: null,
+    adminPanel: null
+};
+
+// ------------------- 2. 骨架屏控制 -------------------
+function showSkeleton(show) {
+    const skeletonElements = [DOM.vName, DOM.vStuId, DOM.vDepartment, DOM.vMajor, DOM.vGradYear];
+    skeletonElements.forEach(el => {
+        if (el) {
+            if (show) el.classList.add('skeleton');
+            else el.classList.remove('skeleton');
+        }
+    });
 }
 
-body {
-    background-color: #EDEBE9;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-height: 100vh;
-    position: relative;
+// ------------------- 3. 自定义弹窗 -------------------
+function showToast(message, duration = 2000) {
+    const toast = document.createElement('div');
+    toast.className = 'custom-toast';
+    toast.innerText = message;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.classList.add('fade-out');
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
 }
 
-.wx-container {
-    width: 100%;
-    max-width: 414px;
-    background-color: #F7F7F7;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-height: 100vh;
-    position: relative;
+function showConfirm(message, title = '提示') {
+    return new Promise((resolve) => {
+        const modal = document.createElement('div');
+        modal.className = 'custom-modal';
+        modal.innerHTML = `
+            <div class="custom-modal-mask"></div>
+            <div class="custom-modal-container">
+                <div class="custom-modal-header">${title}</div>
+                <div class="custom-modal-body">${message}</div>
+                <div class="custom-modal-footer">
+                    <button class="custom-modal-btn cancel">取消</button>
+                    <button class="custom-modal-btn confirm">确定</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        const confirmBtn = modal.querySelector('.confirm');
+        const cancelBtn = modal.querySelector('.cancel');
+        const mask = modal.querySelector('.custom-modal-mask');
+        const close = (result) => {
+            modal.remove();
+            resolve(result);
+        };
+        confirmBtn.onclick = () => close(true);
+        cancelBtn.onclick = () => close(false);
+        mask.onclick = () => close(false);
+    });
 }
 
-/* ---------- 顶部导航栏 ---------- */
-.wx-nav {
-    width: 100%;
-    padding-top: max(12px, env(safe-area-inset-top, 12px));
-    height: calc(48px + max(12px, env(safe-area-inset-top, 12px)));
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding-left: 16px;
-    padding-right: 16px;
-    color: #FFF;
-    font-size: 16px;
-    font-weight: bold;
-    background-color: #A82E2E;
-    position: relative;
-    z-index: 100;
+// ------------------- 4. 配置 & Redis -------------------
+const CONTROL_PASSWORD = "5499";
+const UPSTASH_URL = "https://becoming-trout-101437.upstash.io";
+const UPSTASH_TOKEN = "gQAAAAAAAYw9AAIgcDE2ZjBmNDdkMTIyZTU0MzFlOGNhNTlkYzk1OWU1OTBjOA";
+
+// 控制台 HTML（动态注入）
+const ADMIN_PANEL_HTML = `
+    <div class="admin-panel" id="adminPanel" style="display: block;">
+        <div class="admin-panel-header">
+            <h3 style="color:#C9262B; font-size:18px;">荆楚理工学院控制台</h3>
+        </div>
+        <div class="disclaimer">⚠️ 免责提示：本项目仅供技术交流与娱乐演示，严禁用于非法用途。</div>
+        <div class="form-group"><label>右上角卡号</label><input type="text" id="i-cardId" value="JCCUT20160892"></div>
+        <div class="form-group"><label>姓名</label><input type="text" id="i-name" value="唐海林"></div>
+        <div class="form-group"><label>学号</label><input type="text" id="i-stuId" value="2016211020208" inputmode="numeric"></div>
+        <div class="form-group"><label>院系</label><input type="text" id="i-department" value="经济与管理学院"></div>
+        <div class="form-group"><label>专业</label><input type="text" id="i-major" value="财务管理"></div>
+        <div class="form-group"><label>毕业年份</label><input type="text" id="i-gradYear" value="2020" inputmode="numeric"></div>
+        <button class="random-badge-btn-block" onclick="window.random()">🎲 随机专业与学号(2016-2020)</button>
+        <button class="panel-btn" style="background:#28a745;" onclick="window.generate()">🚀 生成并复制链接</button>
+        <button class="panel-btn" style="background:#ff9f43;" onclick="window.resetDeviceLock()">🔓 重置设备锁</button>
+        <button class="panel-btn" style="background:#444;" onclick="window.closePanel()">关闭控制台</button>
+        
+        <div id="alumni-header" style="margin-top:20px; font-weight:bold; font-size:14px; color:#ffbcbc; text-align:center;">加载中...</div>
+        <div id="alumni-table-container" style="max-height:400px; overflow-y:auto; border-top:1px solid #444; margin-top:8px; padding-top:8px;"></div>
+    </div>
+`;
+
+async function redis(command, ...args) {
+    const url = `${UPSTASH_URL}/${command}/${args.join('/')}`;
+    const resp = await fetch(url, {
+        headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` }
+    });
+    if (!resp.ok) throw new Error(`Redis HTTP ${resp.status}`);
+    const data = await resp.json();
+    return data.result;
 }
 
-.wx-capsule {
-    background: rgba(0, 0, 0, 0.12);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 16px;
-    padding: 5px 12px;
-    display: flex;
-    gap: 12px;
-    font-size: 14px;
-    align-items: center;
+// ------------------- 5. 数据字典 -------------------
+const jcMajorDatabase = [
+    { dept: "经济与管理学院", major: "财务管理", code: "21102" },
+    { dept: "经济与管理学院", major: "大数据与会计", code: "30502" },
+    { dept: "医学部", major: "口腔医学", code: "21102" },
+    { dept: "师范学院", major: "小学教育", code: "40850" },
+    { dept: "新能源学院", major: "印刷工程", code: "2420101" },
+    { dept: "食品与生物学院", major: "植物科学与技术", code: "2420703" },
+    { dept: "食品与生物学院", major: "食品科学与工程", code: "2424407" },
+    { dept: "数理学院", major: "数学与应用数学", code: "09500" },
+    { dept: "艺术学院", major: "环境设计", code: "12050" },
+    { dept: "外国语学院", major: "外国语言文学", code: "10500" }
+];
+const firstNames = ["张","李","王","刘","陈","杨","赵","黄","周","吴","徐","孙","马","胡","郭","林"];
+const lastNames = ["逸飞","梦溪","泽宇","梓涵","听风","晓静","嘉杰","雨桐","博远","子墨","瑞霖","思源","楚菁","雪珂","寒潞"];
+
+// ------------------- 6. 响应式数据（Proxy） -------------------
+const rawConfig = {
+    cardId: "--------",
+    name: "--",
+    stuId: "--",
+    department: "--",
+    major: "--",
+    gradYear: "--"
+};
+
+function updateUI() {
+    if (DOM.vCardId) DOM.vCardId.innerText = rawConfig.cardId;
+    if (DOM.vName) DOM.vName.innerText = rawConfig.name;
+    if (DOM.vStuId) DOM.vStuId.innerText = rawConfig.stuId;
+    if (DOM.vDepartment) DOM.vDepartment.innerText = rawConfig.department;
+    if (DOM.vMajor) DOM.vMajor.innerText = rawConfig.major;
+    if (DOM.vGradYear) DOM.vGradYear.innerText = rawConfig.gradYear;
+    if (DOM.iCardId) {
+        DOM.iCardId.value = rawConfig.cardId === "--------" ? "" : rawConfig.cardId;
+        DOM.iName.value = rawConfig.name === "--" ? "" : rawConfig.name;
+        DOM.iStuId.value = rawConfig.stuId === "--" ? "" : rawConfig.stuId;
+        DOM.iDepartment.value = rawConfig.department === "--" ? "" : rawConfig.department;
+        DOM.iMajor.value = rawConfig.major === "--" ? "" : rawConfig.major;
+        DOM.iGradYear.value = rawConfig.gradYear === "--" ? "" : rawConfig.gradYear;
+    }
 }
 
-.admin-trigger {
-    position: fixed;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 100%;
-    max-width: 414px;
-    height: calc(48px + max(12px, env(safe-area-inset-top, 12px)));
-    cursor: pointer;
-    z-index: 99999;
-    user-select: none;
-    background: transparent;
+const reactiveConfig = new Proxy(rawConfig, {
+    set(target, prop, value) {
+        target[prop] = value;
+        updateUI();
+        return true;
+    }
+});
+
+// ------------------- 7. 拼音首字母 -------------------
+function getChinesePinyinInitials(str) {
+    if (!str) return "user";
+    const map = {
+        '阿':'a','巴':'b','擦':'c','大':'d','俄':'e','发':'f','高':'g','哈':'h','贾':'j','卡':'k','拉':'l','马':'m',
+        '拿':'n','欧':'o','潘':'p','钱':'q','任':'r','撒':'s','他':'t','王':'w','西':'x','压':'y','匝':'z',
+        '陈':'c','胡':'h','林':'l','刘':'l','孙':'s','唐':'t','徐':'x','杨':'y','张':'z','赵':'z','周':'z',
+        '吴':'w','郭':'g','黄':'h','罗':'l','龙':'l','孟':'m','米':'m','苗':'m','莫':'m','南':'n','宁':'n',
+        '牛':'n','年':'n','彭':'p','皮':'p','朴':'p','平':'p','秦':'q','邱':'q','屈':'q','权':'q',
+        '阮':'r','饶':'r','容':'r','荣':'r','宋':'s','苏':'s','沈':'s','石':'s','田':'t','佟':'t','涂':'t',
+        '万':'w','魏':'w','文':'w','夏':'x','肖':'x','谢':'x','许':'x','叶':'y','于':'y','余':'y','易':'y',
+        '郑':'z','朱':'z','左':'z'
+    };
+    let r = "";
+    for (let ch of str) {
+        if (/[a-zA-Z]/.test(ch)) r += ch.toLowerCase();
+        else r += map[ch] || 'x';
+    }
+    return r || "uid";
 }
 
-/* ---------- 首页 ---------- */
-#page-home {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    background: #FFF;
-    min-height: calc(100vh - 48px - max(12px, env(safe-area-inset-top, 12px)));
-    padding-bottom: 80px;
+// ------------------- 8. 设备锁（Canvas指纹） -------------------
+async function getCanvasFingerprint() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 300;
+    canvas.height = 150;
+    const ctx = canvas.getContext('2d');
+    ctx.textBaseline = 'top';
+    ctx.font = '20px Arial';
+    ctx.fillStyle = '#f60';
+    ctx.fillRect(0, 0, 100, 100);
+    ctx.fillStyle = '#069';
+    ctx.fillText('荆楚理工学院', 20, 30);
+    ctx.shadowBlur = 5;
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.fillStyle = '#0ac';
+    ctx.fillRect(120, 50, 80, 60);
+    ctx.beginPath();
+    ctx.arc(250, 80, 30, 0, Math.PI * 2);
+    ctx.fillStyle = '#c96';
+    ctx.fill();
+    const dataURL = canvas.toDataURL();
+    const buffer = new TextEncoder().encode(dataURL);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
 }
 
-.home-mock-bg {
-    width: 100%;
-    display: block;
-    object-fit: contain;
+async function getDeviceId() {
+    const STORAGE_KEY = 'canvasFingerprint';
+    const LEGACY_KEY = 'did';
+    let fingerprint = localStorage.getItem(STORAGE_KEY);
+    if (fingerprint && fingerprint.length >= 16) return fingerprint;
+    try {
+        fingerprint = await getCanvasFingerprint();
+        if (fingerprint && fingerprint.length >= 16) {
+            localStorage.setItem(STORAGE_KEY, fingerprint);
+            localStorage.removeItem(LEGACY_KEY);
+            return fingerprint;
+        }
+        throw new Error('Invalid fingerprint');
+    } catch (e) {
+        console.warn('Canvas指纹失败，回退随机ID', e);
+        let legacyId = localStorage.getItem(LEGACY_KEY);
+        if (!legacyId) {
+            legacyId = 'D-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8);
+            localStorage.setItem(LEGACY_KEY, legacyId);
+        }
+        return legacyId;
+    }
 }
 
-.hotspot-alumni-card {
-    position: absolute;
-    top: 35%;
-    left: 25%;
-    width: 20%;
-    height: 15%;
-    cursor: pointer;
-    z-index: 50;
+// ------------------- 9. 页面导航 -------------------
+function showCard() {
+    if (DOM.pageHome) DOM.pageHome.style.display = 'none';
+    if (DOM.pageCard) DOM.pageCard.style.display = 'flex';
+    if (DOM.navTitle) DOM.navTitle.innerText = '校友卡';
+    if (DOM.navBackBtn) DOM.navBackBtn.style.visibility = 'visible';
+}
+function showHome() {
+    if (DOM.pageCard) DOM.pageCard.style.display = 'none';
+    if (DOM.pageHome) DOM.pageHome.style.display = 'flex';
+    if (DOM.navTitle) DOM.navTitle.innerText = '首页';
+    if (DOM.navBackBtn) DOM.navBackBtn.style.visibility = 'hidden';
 }
 
-/* ---------- 校友卡页面 ---------- */
-#page-card {
-    width: 100%;
-    display: none;
-    flex-direction: column;
-    align-items: center;
+async function tryNavigateToCard() {
+    if (!isCardDataValid) {
+        showToast('暂未识别到您的校友信息，请确认链接完整');
+        return;
+    }
+    const uid = currentUserId;
+    const deviceId = await getDeviceId();
+    try {
+        const raw = await redis('GET', `user:${uid}`);
+        if (!raw) {
+            showToast('未找到该校友卡');
+            return;
+        }
+        const userData = JSON.parse(raw);
+        if (userData.activated) {
+            if (userData.deviceId !== deviceId) {
+                showToast('设备验证失败，该校友卡已在其他设备绑定');
+                return;
+            }
+            showCard();
+            return;
+        }
+        const ok = await showConfirm('点击"确定"后，此校友卡将与当前设备锁定绑定。', '欢迎使用校友卡');
+        if (ok) {
+            userData.activated = true;
+            userData.deviceId = deviceId;
+            await redis('SET', `user:${uid}`, JSON.stringify(userData));
+            showCard();
+        }
+    } catch (e) {
+        showToast('网络异常，请刷新重试');
+    }
 }
 
-.alumni-card {
-    width: calc(100% - 24px);
-    height: 220px;
-    background-color: #BD262A;
-    background-image: url('card-bg.png');
-    background-size: 100% 100%;
-    background-repeat: no-repeat;
-    border-radius: 12px;
-    overflow: hidden;
-    margin-top: 14px;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
-    position: relative;
+async function resetDeviceLock() {
+    if (!currentUserId) {
+        showToast('未检测到当前校友信息');
+        return;
+    }
+    try {
+        const raw = await redis('GET', `user:${currentUserId}`);
+        if (raw) {
+            const userData = JSON.parse(raw);
+            userData.activated = false;
+            userData.deviceId = null;
+            await redis('SET', `user:${currentUserId}`, JSON.stringify(userData));
+            showToast(`已解除 ${currentUserId} 的设备锁`);
+        }
+    } catch (e) {
+        showToast('重置失败');
+    }
+    showHome();
+    closePanel();
 }
 
-.card-top-area {
-    position: relative;
-    width: 100%;
-    height: calc(100% - 38px);
+// ------------------- 10. 加载链接数据 -------------------
+let currentUserId = "";
+let isCardDataValid = false;
+
+async function load() {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    if (!id) return;
+    currentUserId = id;
+    showSkeleton(true);
+    try {
+        const raw = await redis('GET', `user:${id}`);
+        if (raw) {
+            const u = JSON.parse(raw);
+            reactiveConfig.cardId = u.cardId || "";
+            reactiveConfig.name = u.name || "--";
+            reactiveConfig.stuId = u.stuId || "--";
+            reactiveConfig.department = u.department || "--";
+            reactiveConfig.major = u.major || "--";
+            reactiveConfig.gradYear = u.gradYear || "--";
+            isCardDataValid = true;
+        } else {
+            isCardDataValid = false;
+            reactiveConfig.cardId = "--------";
+            reactiveConfig.name = "--";
+            reactiveConfig.stuId = "--";
+            reactiveConfig.department = "--";
+            reactiveConfig.major = "--";
+            reactiveConfig.gradYear = "--";
+        }
+    } catch (e) {
+        console.error(e);
+        isCardDataValid = false;
+    } finally {
+        showSkeleton(false);
+    }
 }
 
-.card-serial {
-    position: absolute;
-    top: 16px;
-    right: 20px;
-    font-size: 13px;
-    font-family: "Courier New", Courier, monospace;
-    font-weight: bold;
-    color: rgba(255,255,255,0.9);
+// ------------------- 11. 控制台功能 -------------------
+function random() {
+    const y = Math.floor(Math.random() * 5) + 2016;
+    const m = jcMajorDatabase[Math.floor(Math.random() * jcMajorDatabase.length)];
+    const sid = `${y}${m.code}${String(Math.floor(Math.random()*3)+1).padStart(2,'0')}${String(Math.floor(Math.random()*40)+1).padStart(2,'0')}`;
+    const rname = firstNames[Math.floor(Math.random()*firstNames.length)] + lastNames[Math.floor(Math.random()*lastNames.length)];
+    if (DOM.iStuId) DOM.iStuId.value = sid;
+    if (DOM.iName) DOM.iName.value = rname;
+    if (DOM.iDepartment) DOM.iDepartment.value = m.dept;
+    if (DOM.iMajor) DOM.iMajor.value = m.major;
+    if (DOM.iGradYear) DOM.iGradYear.value = y + 4;
+    if (DOM.iCardId) DOM.iCardId.value = `JCCUT${y}0${Math.floor(Math.random() * 80) + 10}`;
 }
 
-.info-fields {
-    position: absolute;
-    top: 26px;
-    left: 109px;
-    display: flex;
-    flex-direction: column;
-    gap: 2.5px;
+// ---------- 同步复制函数（稳定版）----------
+function syncCopyToClipboard(text) {
+    try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        ta.style.top = '-9999px';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const success = document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (success) return true;
+    } catch (e) {}
+    if (navigator.clipboard && window.isSecureContext) {
+        try {
+            navigator.clipboard.writeText(text);
+            return true;
+        } catch (e) {}
+    }
+    return false;
 }
 
-.info-row {
-    display: flex;
-    align-items: center;
-    height: 19px;
-    line-height: 19px;
+// 复制校友链接（供表格按钮使用）
+window.copyAlumniLink = async function(id) {
+    const link = `${window.location.origin}${window.location.pathname.replace(/\/$/, '')}?id=${id}`;
+    const copied = syncCopyToClipboard(link);
+    if (copied) {
+        showToast('链接已复制到剪贴板');
+    } else {
+        await showConfirm('复制失败，请手动复制链接', link);
+    }
+};
+
+async function generateUniqueShortId(baseName, baseStuId, maxRetries = 3) {
+    let shortId = getChinesePinyinInitials(baseName) + baseStuId.slice(-2);
+    let retry = 0;
+    while (retry < maxRetries) {
+        const exists = await redis('EXISTS', `user:${shortId}`);
+        if (exists === 0) return shortId;
+        const suffix = String(Math.floor(Math.random() * 90) + 10);
+        shortId = getChinesePinyinInitials(baseName) + baseStuId.slice(-2) + suffix.slice(-2);
+        retry++;
+    }
+    throw new Error('生成短ID失败，请稍后重试或修改姓名/学号');
 }
 
-.info-label {
-    font-size: 14.5px;
-    color: rgba(255,255,255,0.95);
-    white-space: nowrap;
+async function generate() {
+    const cardId = DOM.iCardId?.value.trim() || '';
+    const name = DOM.iName?.value.trim() || '';
+    const stuId = DOM.iStuId?.value.trim() || '';
+    const department = DOM.iDepartment?.value.trim() || '';
+    const major = DOM.iMajor?.value.trim() || '';
+    const gradYear = DOM.iGradYear?.value.trim() || '';
+    if (!name || !stuId) {
+        showToast('姓名和学号不能为空');
+        return;
+    }
+    const shortId = await generateUniqueShortId(name, stuId);
+    const fullUrl = `${window.location.origin}${window.location.pathname.replace(/\/$/, '')}?id=${shortId}`;
+    const copied = syncCopyToClipboard(fullUrl);
+    if (copied) {
+        showToast('链接已复制到剪贴板');
+    } else {
+        await showConfirm('自动复制失败，请手动复制下方链接', fullUrl);
+    }
+    (async () => {
+        try {
+            const exists = await redis('EXISTS', `user:${shortId}`);
+            if (exists === 1) {
+                showToast(`短ID "${shortId}" 已存在，链接已复制但无法重复保存`);
+                return;
+            }
+            await redis('SET', `user:${shortId}`, JSON.stringify({
+                cardId, name, stuId, department, major, gradYear,
+                activated: false,
+                deviceId: null,
+                createdAt: Date.now()
+            }));
+            await redis('SADD', 'alumni:index', shortId);
+            reactiveConfig.cardId = cardId;
+            reactiveConfig.name = name;
+            reactiveConfig.stuId = stuId;
+            reactiveConfig.department = department;
+            reactiveConfig.major = major;
+            reactiveConfig.gradYear = gradYear;
+            currentUserId = shortId;
+            isCardDataValid = true;
+            showToast(`生成成功！短ID：${shortId}`);
+            await loadAlumniTable(true);
+        } catch (e) {
+            console.error('生成保存失败', e);
+            showToast(`保存失败：${e.message}`);
+        }
+    })();
 }
 
-.info-value {
-    font-size: 14.5px;
-    color: #FFF !important;
-    white-space: nowrap;
+// ------------------- 校友表格（含复制链接） -------------------
+const ALUMNI_CACHE_KEY = 'alumni_list_cache';
+const CACHE_TTL = 5 * 60 * 1000;
+
+async function loadAlumniTable(forceRefresh = false) {
+    const container = document.getElementById('alumni-table-container');
+    const headerDiv = document.getElementById('alumni-header');
+    if (!container || !headerDiv) return;
+    try {
+        let alumniList = null;
+        if (!forceRefresh) {
+            const cached = localStorage.getItem(ALUMNI_CACHE_KEY);
+            if (cached) {
+                const { data, timestamp } = JSON.parse(cached);
+                if (Date.now() - timestamp < CACHE_TTL) {
+                    alumniList = data;
+                }
+            }
+        }
+        if (!alumniList) {
+            const allKeys = await redis('KEYS', 'user:*');
+            if (!allKeys || allKeys.length === 0) {
+                headerDiv.innerText = '共 0 位校友';
+                container.innerHTML = '<div style="text-align:center;padding:20px;color:#aaa;">暂无校友数据</div>';
+                return;
+            }
+            const ids = allKeys.map(key => key.replace('user:', ''));
+            const batchSize = 50;
+            let list = [];
+            for (let i = 0; i < ids.length; i += batchSize) {
+                const batchIds = ids.slice(i, i + batchSize);
+                const userKeys = batchIds.map(id => `user:${id}`);
+                const vals = await redis('MGET', ...userKeys);
+                for (let j = 0; j < batchIds.length; j++) {
+                    const u = JSON.parse(vals[j] || '{}');
+                    list.push({
+                        id: batchIds[j],
+                        name: u.name || '?',
+                        major: u.major || '—',
+                        activated: u.activated || false,
+                        createdAt: u.createdAt || 0
+                    });
+                }
+            }
+            alumniList = list;
+            alumniList.sort((a, b) => b.createdAt - a.createdAt);
+            localStorage.setItem(ALUMNI_CACHE_KEY, JSON.stringify({ data: alumniList, timestamp: Date.now() }));
+        } else {
+            alumniList.sort((a, b) => b.createdAt - a.createdAt);
+        }
+        headerDiv.innerText = `共 ${alumniList.length} 位校友`;
+        if (alumniList.length === 0) {
+            container.innerHTML = '<div style="text-align:center;padding:20px;color:#aaa;">暂无校友数据</div>';
+            return;
+        }
+        let html = `<table style="width:100%; border-collapse:collapse; color:#fff; font-size:13px;">
+            <thead>
+                <tr style="border-bottom:2px solid #555;">
+                    <th style="padding:8px 4px; text-align:left; width:10%;">状态</th>
+                    <th style="padding:8px 4px; text-align:left; width:18%;">姓名</th>
+                    <th style="padding:8px 4px; text-align:left; width:12%;">短ID</th>
+                    <th style="padding:8px 4px; text-align:left; width:30%;">专业</th>
+                    <th style="padding:8px 4px; text-align:center; width:15%;">复制</th>
+                    <th style="padding:8px 4px; text-align:center; width:15%;">删除</th>
+                </tr>
+            </thead>
+            <tbody>`;
+        for (const item of alumniList) {
+            const statusIcon = item.activated ? '🟢' : '🔴';
+            let displayName = item.name;
+            if (displayName.length === 2) displayName = displayName[0] + '　' + displayName[1];
+            html += `<tr style="border-bottom:1px solid #333;">
+                <td style="padding:6px 4px;">${statusIcon}</td>
+                <td style="padding:6px 4px;">${displayName}</td>
+                <td style="padding:6px 4px; font-family:monospace;">${item.id}</td>
+                <td style="padding:6px 4px;">${escapeHtml(item.major)}</td>
+                <td style="padding:6px 4px; text-align:center;">
+                    <button onclick="window.copyAlumniLink('${item.id}')" style="background:#17a2b8; border:none; color:#fff; padding:2px 8px; border-radius:3px; cursor:pointer;">复制</button>
+                </td>
+                <td style="padding:6px 4px; text-align:center;">
+                    <button onclick="window.deleteAlumniById('${item.id}')" style="background:#d9534f; border:none; color:#fff; padding:2px 8px; border-radius:3px; cursor:pointer;">删除</button>
+                </td>
+            </tr>`;
+        }
+        html += `</tbody></table>`;
+        container.innerHTML = html;
+    } catch (e) {
+        console.error('加载校友表格失败', e);
+        headerDiv.innerText = '加载失败';
+        container.innerHTML = `<div style="text-align:center;padding:20px;color:#f66;">错误：${e.message}</div>`;
+    }
 }
 
-.card-gold-strip {
-    height: 38px;
-    width: 100%;
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    display: flex;
-    align-items: center;
-    padding-left: 20px;
-    font-size: 11px;
-    color: #8A1A1D;
-    font-weight: bold;
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
 }
 
-/* ---------- 二维码面板 ---------- */
-.white-panel {
-    width: calc(100% - 24px);
-    background: #FFF;
-    border-radius: 12px;
-    margin-top: 14px;
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+window.deleteAlumniById = async function(id) {
+    let name = id;
+    try {
+        const raw = await redis('GET', `user:${id}`);
+        if (raw) {
+            const userData = JSON.parse(raw);
+            name = userData.name || id;
+        }
+    } catch (e) { /* ignore */ }
+    const confirmed = await showConfirm(`确认删除校友 “${name}” 吗？`, '警告');
+    if (!confirmed) return;
+    try {
+        await redis('DEL', `user:${id}`);
+        await redis('SREM', 'alumni:index', id);
+        localStorage.removeItem(ALUMNI_CACHE_KEY);
+        showToast(`已删除校友 ${name}`);
+        await loadAlumniTable(true);
+    } catch (e) {
+        showToast(`删除失败：${e.message}`);
+    }
+};
+
+async function list(forceRefresh = false) {
+    await loadAlumniTable(forceRefresh);
 }
 
-.qr-header-title {
-    font-size: 15px;
-    color: #333;
-    margin-bottom: 18px;
-    font-weight: bold;
+// ------------------- 12. 三指手势打开控制台（动态注入） -------------------
+const gestureArea = document.getElementById('gestureArea');
+if (gestureArea) {
+    gestureArea.addEventListener('touchstart', async (e) => {
+        if (e.touches.length === 3) {
+            if (document.getElementById('adminPanel')) return;
+            const pwd = prompt('🔐 请输入控制台密码：');
+            if (pwd === CONTROL_PASSWORD) {
+                document.body.insertAdjacentHTML('beforeend', ADMIN_PANEL_HTML);
+                DOM.iCardId = document.getElementById('i-cardId');
+                DOM.iName = document.getElementById('i-name');
+                DOM.iStuId = document.getElementById('i-stuId');
+                DOM.iDepartment = document.getElementById('i-department');
+                DOM.iMajor = document.getElementById('i-major');
+                DOM.iGradYear = document.getElementById('i-gradYear');
+                bindConsoleEvents();
+                updateUI();
+                await loadAlumniTable();
+            } else if (pwd !== null) {
+                showToast('密码错误');
+            }
+        }
+    });
 }
 
-.qr-box-border {
-    width: 205px;
-    height: 205px;
-    background: #FFF;
-    border: 1px solid #E5E5E5;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px;
+function bindConsoleEvents() {
+    if (!DOM.iName) return;
+    DOM.iCardId.addEventListener('input', (e) => { reactiveConfig.cardId = e.target.value; });
+    DOM.iName.addEventListener('input', (e) => { reactiveConfig.name = e.target.value; });
+    DOM.iStuId.addEventListener('input', (e) => { reactiveConfig.stuId = e.target.value; });
+    DOM.iDepartment.addEventListener('input', (e) => { reactiveConfig.department = e.target.value; });
+    DOM.iMajor.addEventListener('input', (e) => { reactiveConfig.major = e.target.value; });
+    DOM.iGradYear.addEventListener('input', (e) => { reactiveConfig.gradYear = e.target.value; });
 }
 
-.qr-box-border img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
+function closePanel() {
+    const panel = document.getElementById('adminPanel');
+    if (panel) panel.remove();
+    DOM.iCardId = DOM.iName = DOM.iStuId = DOM.iDepartment = DOM.iMajor = DOM.iGradYear = null;
 }
 
-.refresh-lnk {
-    margin-top: 14px;
-    color: #999;
-    font-size: 13px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    cursor: pointer;
+// ------------------- 13. 北京时间时钟 + 刷新按钮旋转 -------------------
+function updateClock() {
+    const now = new Date();
+    const beijing = new Date(now.getTime() + now.getTimezoneOffset() * 60000 + 28800000);
+    const str = `${beijing.getFullYear()}年${String(beijing.getMonth()+1).padStart(2,'0')}月${String(beijing.getDate()).padStart(2,'0')}日 ${String(beijing.getHours()).padStart(2,'0')}:${String(beijing.getMinutes()).padStart(2,'0')}:${String(beijing.getSeconds()).padStart(2,'0')}`;
+    if (DOM.liveClockBar) DOM.liveClockBar.innerText = `当前时间：${str}`;
+}
+function triggerManualRefresh() {
+    const refreshBtn = document.querySelector('.refresh-lnk');
+    if (refreshBtn) {
+        refreshBtn.classList.add('rotating');
+        setTimeout(() => refreshBtn.classList.remove('rotating'), 500);
+    }
+    updateClock();
 }
 
-.live-timer-container {
-    width: 100%;
-    background-color: #5C1315;
-    color: #FFF;
-    text-align: center;
-    padding: 13px 0;
-    border-radius: 16px;
-    margin-top: 24px;
-    font-weight: bold;
-}
+// ------------------- 14. 启动 -------------------
+showHome();
+load();
+updateClock();
+setInterval(updateClock, 1000);
 
-/* ---------- 控制台面板 ---------- */
-.admin-panel {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.96);
-    z-index: 100000;
-    padding: 20px;
-    color: #fff;
-    overflow-y: auto;
-}
-
-.admin-panel.active {
-    display: block;
-}
-
-.admin-panel-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-}
-
-.form-group {
-    margin-bottom: 12px;
-}
-.form-group label {
-    display: block;
-    font-size: 12px;
-    margin-bottom: 4px;
-    color: #ccc;
-}
-.form-group input {
-    width: 100%;
-    height: 38px;
-    border: none;
-    border-radius: 4px;
-    padding: 0 10px;
-    font-size: 14px;
-    color: #333;
-    outline: none;
-}
-
-.panel-btn {
-    width: 100%;
-    height: 44px;
-    background: #C9262B;
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    margin-top: 10px;
-    font-weight: bold;
-    font-size: 14px;
-    cursor: pointer;
-}
-
-.random-badge-btn-block {
-    width: 100%;
-    height: 44px;
-    background: #5C1315;
-    color: #fff;
-    border: 1px solid #C9262B;
-    border-radius: 4px;
-    margin-top: 15px;
-    font-weight: bold;
-    font-size: 14px;
-    cursor: pointer;
-}
-
-/* ---------- 骨架屏 ---------- */
-.skeleton {
-    background: linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%);
-    background-size: 200% 100%;
-    animation: skeleton-loading 1.2s infinite;
-    border-radius: 4px;
-    color: transparent !important;
-    user-select: none;
-    min-width: 4em;
-    display: inline-block;
-}
-@keyframes skeleton-loading {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
-}
-
-/* ---------- 刷新按钮旋转 ---------- */
-.refresh-lnk.rotating {
-    animation: rotate360 0.5s ease-in-out;
-}
-@keyframes rotate360 {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-/* ---------- 自定义弹窗（Toast & Modal） ---------- */
-.custom-toast {
-    position: fixed;
-    bottom: 20%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0,0,0,0.85);
-    color: #fff;
-    padding: 10px 20px;
-    border-radius: 30px;
-    font-size: 14px;
-    z-index: 100001;
-    white-space: nowrap;
-    animation: fadeInUp 0.2s ease;
-}
-.custom-toast.fade-out {
-    animation: fadeOutDown 0.2s forwards;
-}
-@keyframes fadeInUp {
-    from { opacity: 0; transform: translateX(-50%) translateY(10px); }
-    to { opacity: 1; transform: translateX(-50%) translateY(0); }
-}
-@keyframes fadeOutDown {
-    from { opacity: 1; transform: translateX(-50%) translateY(0); }
-    to { opacity: 0; transform: translateX(-50%) translateY(10px); }
-}
-
-.custom-modal-mask {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.5);
-    z-index: 100002;
-}
-.custom-modal-container {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 280px;
-    background: #fff;
-    border-radius: 12px;
-    overflow: hidden;
-    z-index: 100003;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-}
-.custom-modal-header {
-    background: #A82E2E;
-    color: #fff;
-    padding: 12px;
-    text-align: center;
-    font-weight: bold;
-    font-size: 16px;
-}
-.custom-modal-body {
-    padding: 20px;
-    text-align: center;
-    color: #333;
-    font-size: 14px;
-    line-height: 1.4;
-}
-.custom-modal-footer {
-    display: flex;
-    border-top: 1px solid #eee;
-}
-.custom-modal-btn {
-    flex: 1;
-    padding: 12px;
-    border: none;
-    background: #fff;
-    font-size: 15px;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-.custom-modal-btn.cancel {
-    color: #999;
-    border-right: 1px solid #eee;
-}
-.custom-modal-btn.confirm {
-    color: #A82E2E;
-    font-weight: bold;
-}
-.custom-modal-btn:active {
-    background: #f5f5f5;
-}
-
-/* ---------- 辅助 ---------- */
-.help-doc-box {
-    background: rgba(255,255,255,0.08);
-    border: 1px dashed rgba(255,255,255,0.2);
-    padding: 14px;
-    border-radius: 6px;
-    margin-top: 20px;
-    font-size: 12.5px;
-    line-height: 1.6;
-    color: #e0e0e0;
-}
-.help-doc-box h4 {
-    color: #ff9f43;
-    margin-bottom: 8px;
-    font-size: 14px;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-    padding-bottom: 4px;
-}
-.help-doc-box ul, .help-doc-box ol {
-    padding-left: 18px;
-    margin-bottom: 12px;
-}
-.code-mark {
-    font-family: monospace;
-    background: rgba(0,0,0,0.4);
-    padding: 1px 4px;
-    border-radius: 3px;
-    color: #28a745;
-    margin: 0 2px;
-}
-
-/* ---------- 响应式 ---------- */
-@media (max-width: 374px) {
-    .info-label, .info-value { font-size: 13px; }
-    .card-serial { font-size: 11px; }
-    .white-panel { padding: 18px; }
-}
-@media (min-width: 415px) {
-    body { background-color: #d0cfce; }
-}
+window.showHome = showHome;
+window.tryNavigateToCard = tryNavigateToCard;
+window.triggerManualRefresh = triggerManualRefresh;
+window.random = random;
+window.generate = generate;
+window.list = list;
+window.resetDeviceLock = resetDeviceLock;
+window.closePanel = closePanel;
+window.deleteAlumniById = deleteAlumniById;
+window.copyAlumniLink = copyAlumniLink;
