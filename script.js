@@ -418,7 +418,7 @@ function generate() {
 
 /**
  * 【📋 查看所有校友】功能
- * 只显示姓名、短ID、激活状态
+ * 只显示姓名、短ID、激活状态（同一行）
  */
 async function list() {
     try {
@@ -433,9 +433,8 @@ async function list() {
         let t = `📋 共 ${keys.length} 位校友：\n\n`;
         keys.forEach((k, i) => {
             const u = JSON.parse(vals[i] || '{}');
-            t += `${i + 1}. ${u.name}\n`;
-            t += `   短ID: ${k.replace('user:', '')}\n`;
-            t += `   状态: ${u.activated ? '✅ 已激活' : '⏳ 未激活'}\n\n`;
+            const status = u.activated ? '✅' : '⏳';
+            t += `${i + 1}. ${u.name}  |  ${k.replace('user:', '')}  |  ${status}\n`;
         });
         
         alert(t);
