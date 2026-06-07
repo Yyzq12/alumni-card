@@ -1,6 +1,7 @@
 /* ==========================================
-   荆楚理工学院 移动校园 - 最终极致版（修复列表空白问题）
-   特性：Proxy 响应式、Canvas指纹、动态控制台、SCAN迭代、自动迁移旧数据
+   荆楚理工学院 移动校园 - 最终稳定版
+   修复：列表索引缺失自动重建、生成链接误报失败、删除同步索引
+   特性：Proxy响应式、Canvas指纹、动态控制台、SCAN迭代、骨架屏
    ========================================== */
 
 'use strict';
@@ -392,6 +393,7 @@ async function copyToClipboard(text) {
     }
 }
 
+// 修复：生成链接时即使索引失败也不影响主提示
 async function generate() {
     const cardId = DOM.iCardId?.value.trim() || '';
     const name = DOM.iName?.value.trim() || '';
@@ -415,11 +417,18 @@ async function generate() {
             showToast(`短ID "${shortId}" 已存在，链接已复制但无法重复保存`);
             return;
         }
+        // 写入主数据
         await redis('SET', `user:${shortId}`, JSON.stringify({
             cardId, name, stuId, department, major, gradYear,
             activated: false, deviceId: null, createdAt: Date.now()
         }));
-        await redis('SADD', 'alumni:index', shortId);
+        // 尝试添加到索引集（忽略失败，不影响成功提示）
+        try {
+            await redis('SADD', 'alumni:index', shortId);
+        } catch (indexErr) {
+            console.warn('索引更新失败，但不影响数据存储', indexErr);
+        }
+        // 更新当前显示
         reactiveConfig.cardId = cardId;
         reactiveConfig.name = name;
         reactiveConfig.stuId = stuId;
@@ -430,34 +439,38 @@ async function generate() {
         isCardDataValid = true;
         showToast(`生成成功！短ID：${shortId}`);
     } catch (e) {
-        showToast(`云端保存失败：${e.message}`);
+        console.error('生成保存失败', e);
+        showToast(`保存失败：${e.message}`);
     }
 }
 
-// ---------- 修复列表：兼容旧数据，自动重建索引 ----------
-async function rebuildIndexIfNeeded() {
-    // 检查索引集合是否为空
-    const [_, members] = await redis('SSCAN', 'alumni:index', '0', 'COUNT', '1');
-    if (members && members.length > 0) return; // 已有数据，无需重建
-    
-    showToast('检测到旧数据，正在重建索引...', 3000);
-    // 使用 KEYS 扫描所有 user:* （一次性迁移，数据量大时可能慢，但仅执行一次）
-    const keys = await redis('KEYS', 'user:*');
-    if (!keys || keys.length === 0) return;
-    for (const key of keys) {
-        const id = key.replace('user:', '');
-        await redis('SADD', 'alumni:index', id);
-    }
-    showToast(`索引重建完成，共导入 ${keys.length} 位校友`);
-}
-
+// 修复列表：自动重建空索引，回退 KEYS 扫描
 const ALUMNI_CACHE_KEY = 'alumni_list_cache';
 const CACHE_TTL = 5 * 60 * 1000;
 
 async function list(forceRefresh = false) {
     try {
-        // 先尝试重建索引（兼容旧数据）
-        await rebuildIndexIfNeeded();
+        // 检查索引集合大小
+        let indexSize = 0;
+        try {
+            indexSize = parseInt(await redis('SCARD', 'alumni:index')) || 0;
+        } catch (e) {
+            console.warn('获取索引大小失败', e);
+        }
+        if (indexSize === 0) {
+            showToast('索引为空，正在重建...', 2000);
+            const allKeys = await redis('KEYS', 'user:*');
+            if (allKeys && allKeys.length > 0) {
+                for (const key of allKeys) {
+                    const id = key.replace('user:', '');
+                    await redis('SADD', 'alumni:index', id);
+                }
+                showToast(`索引重建完成，共导入 ${allKeys.length} 位校友`);
+            } else {
+                showToast('暂无校友数据');
+                return;
+            }
+        }
         
         if (!forceRefresh) {
             const cached = localStorage.getItem(ALUMNI_CACHE_KEY);
@@ -494,18 +507,10 @@ async function list(forceRefresh = false) {
         
         const alumniList = ids.map((id, idx) => {
             const u = JSON.parse(allUsers[idx] || '{}');
-            return {
-                id: id,
-                name: u.name || '?',
-                activated: u.activated || false
-            };
+            return { id, name: u.name || '?', activated: u.activated || false };
         });
         
-        localStorage.setItem(ALUMNI_CACHE_KEY, JSON.stringify({
-            data: alumniList,
-            timestamp: Date.now()
-        }));
-        
+        localStorage.setItem(ALUMNI_CACHE_KEY, JSON.stringify({ data: alumniList, timestamp: Date.now() }));
         showAlumniListDialog(alumniList);
     } catch (e) {
         showToast(`加载失败：${e.message}`);
@@ -521,7 +526,6 @@ function showAlumniListDialog(alumniList) {
         msg += `${dot} ${name} · ${item.id}\n`;
     });
     msg += `\n点击【确定】可输入ID删除`;
-    
     showConfirm(msg, '校友列表').then(wantDelete => {
         if (wantDelete) {
             const id = prompt('输入要删除的短ID：');
