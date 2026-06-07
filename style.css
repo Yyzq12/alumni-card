@@ -36,15 +36,16 @@ body {
     position: relative;
     padding-bottom: env(safe-area-inset-bottom, 0);
 }
-/* 导航栏 */
+/* 导航栏（已修复顶部内边距） */
 .wx-nav {
     width: 100%;
-    padding-top: env(safe-area-inset-top, 44px);
-    height: calc(48px + env(safe-area-inset-top, 44px));
+    padding-top: env(safe-area-inset-top, 44px);   /* 顶部内边距：刘海屏安全区，否则44px */
+    height: calc(48px + env(safe-area-inset-top, 44px)); /* 总高度 = 内容高度48px + 顶部内边距 */
     display: flex;
-    align-items: center;
+    align-items: center;          /* 子元素垂直居中 */
     justify-content: space-between;
-    padding: 0 16px;
+    padding-left: 16px;
+    padding-right: 16px;
     color: var(--white);
     font-weight: bold;
     background-color: var(--theme-red);
@@ -56,7 +57,7 @@ body {
     display: flex;
     gap: 12px;
 }
-/* 三指手势区域（与导航栏高度一致，保证可触摸） */
+/* 三指手势区域（比导航栏略高，扩大触摸范围） */
 .admin-trigger {
     position: fixed;
     top: 0;
@@ -64,7 +65,7 @@ body {
     transform: translateX(-50%);
     width: 100%;
     max-width: 414px;
-    height: calc(48px + env(safe-area-inset-top, 44px));
+    height: calc(60px + env(safe-area-inset-top, 44px));
     cursor: pointer;
     z-index: 99999;
     background: transparent;
