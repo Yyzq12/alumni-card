@@ -530,7 +530,7 @@ async function loadAlumniTable(forceRefresh = false) {
                     <th style="padding:8px 4px; text-align:left; width:18%;">姓名</th>
                     <th style="padding:8px 4px; text-align:left; width:12%;">短ID</th>
                     <th style="padding:8px 4px; text-align:left; width:37%;">专业</th>
-                    <th style="padding:8px 4px; text-align:center; width:10%;">🔗</th>
+                    <th style="padding:8px 4px; text-align:center; width:10%;">链接</th>
                     <th style="padding:8px 4px; text-align:center; width:15%;">删除</th>
                 </tr>
             </thead>
