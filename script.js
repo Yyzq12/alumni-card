@@ -5,8 +5,8 @@
 
 const CONTROL_PASSWORD = "5499";
 
-const UPSTASH_URL = "https://safe-drake-66708.upstash.io";
-const UPSTASH_TOKEN = "gQAAAAAAAQSUAAIgcDI3MmM4Njc1OWU4NjQ0YTQ4YjExNTM3MjM3YTY4ZGY2OQ";
+const UPSTASH_URL = "https://becoming-trout-101437.upstash.io";
+const UPSTASH_TOKEN = "gQAAAAAAAYw9AAIgcDE2ZjBmNDdkMTIyZTU0MzFlOGNhNTlkYzk1OWU1OTBjOA";
 
 async function redis(command, ...args) {
     const url = `${UPSTASH_URL}/${command}/${args.join('/')}`;
