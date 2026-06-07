@@ -1,7 +1,6 @@
 /* ==========================================
-   荆楚理工学院 移动校园 - 最终稳定版
-   修复：列表索引缺失自动重建、生成链接误报失败、删除同步索引
-   特性：Proxy响应式、Canvas指纹、动态控制台、SCAN迭代、骨架屏
+   荆楚理工学院 移动校园 - 最终完整版
+   包含：Canvas指纹、动态控制台、响应式数据、索引自动修复、列表排版优化
    ========================================== */
 
 'use strict';
@@ -393,7 +392,6 @@ async function copyToClipboard(text) {
     }
 }
 
-// 修复：生成链接时即使索引失败也不影响主提示
 async function generate() {
     const cardId = DOM.iCardId?.value.trim() || '';
     const name = DOM.iName?.value.trim() || '';
@@ -417,18 +415,15 @@ async function generate() {
             showToast(`短ID "${shortId}" 已存在，链接已复制但无法重复保存`);
             return;
         }
-        // 写入主数据
         await redis('SET', `user:${shortId}`, JSON.stringify({
             cardId, name, stuId, department, major, gradYear,
             activated: false, deviceId: null, createdAt: Date.now()
         }));
-        // 尝试添加到索引集（忽略失败，不影响成功提示）
         try {
             await redis('SADD', 'alumni:index', shortId);
         } catch (indexErr) {
             console.warn('索引更新失败，但不影响数据存储', indexErr);
         }
-        // 更新当前显示
         reactiveConfig.cardId = cardId;
         reactiveConfig.name = name;
         reactiveConfig.stuId = stuId;
@@ -444,13 +439,11 @@ async function generate() {
     }
 }
 
-// 修复列表：自动重建空索引，回退 KEYS 扫描
 const ALUMNI_CACHE_KEY = 'alumni_list_cache';
 const CACHE_TTL = 5 * 60 * 1000;
 
 async function list(forceRefresh = false) {
     try {
-        // 检查索引集合大小
         let indexSize = 0;
         try {
             indexSize = parseInt(await redis('SCARD', 'alumni:index')) || 0;
@@ -517,15 +510,19 @@ async function list(forceRefresh = false) {
     }
 }
 
+// 校友列表对话框（排版优化：图标+姓名对齐+点分隔+末尾提示）
 function showAlumniListDialog(alumniList) {
     let msg = `共 ${alumniList.length} 位校友\n\n`;
     alumniList.forEach(item => {
         const dot = item.activated ? '🟢' : '🔴';
         let name = item.name;
-        if (name.length === 2) name = name[0] + '　' + name[1];
+        if (name.length === 2) {
+            name = name[0] + '　' + name[1];   // 二字姓名中间加全角空格
+        }
         msg += `${dot} ${name} · ${item.id}\n`;
     });
-    msg += `\n点击【确定】可输入ID删除`;
+    msg += `\n点击【确定】可删除校友`;
+
     showConfirm(msg, '校友列表').then(wantDelete => {
         if (wantDelete) {
             const id = prompt('输入要删除的短ID：');
