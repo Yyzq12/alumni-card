@@ -1,6 +1,6 @@
 /* ==========================================
-   荆楚理工学院 移动校园 - 样式表 (最终极致版)
-   新增：骨架屏、刷新按钮旋转动画
+   荆楚理工学院 移动校园 - 样式表 (最终修复版)
+   包含：骨架屏、刷新动画、自定义弹窗、修复控制台手势区域
    ========================================== */
 
 :root {
@@ -11,6 +11,9 @@
     --gold-dark: #8A1A1D;
     --white: #FFFFFF;
     --skeleton-grad: linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%);
+    /* 统一顶部内边距，非刘海屏12px，刘海屏自动适配 */
+    --nav-top-padding: max(12px, env(safe-area-inset-top, 12px));
+    --nav-height: 48px;
 }
 
 * {
@@ -28,6 +31,7 @@ body {
     align-items: center;
     min-height: 100vh;
 }
+
 .wx-container {
     width: 100%;
     max-width: 414px;
@@ -36,26 +40,34 @@ body {
     position: relative;
     padding-bottom: env(safe-area-inset-bottom, 0);
 }
-/* 导航栏 */
+
+/* ---------- 顶部导航栏（统一高度） ---------- */
 .wx-nav {
     width: 100%;
-    padding-top: env(safe-area-inset-top, 44px);
-    height: calc(48px + env(safe-area-inset-top, 44px));
+    padding-top: var(--nav-top-padding);
+    height: calc(var(--nav-height) + var(--nav-top-padding));
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 16px;
+    padding-left: 16px;
+    padding-right: 16px;
     color: var(--white);
     font-weight: bold;
     background-color: var(--theme-red);
+    position: relative;
+    z-index: 100;
 }
+
+/* 微信胶囊装饰 */
 .wx-capsule {
-    background: rgba(0,0,0,0.12);
+    background: rgba(0, 0, 0, 0.12);
     border-radius: 16px;
     padding: 5px 12px;
     display: flex;
     gap: 12px;
 }
+
+/* 三指手势区域（与导航栏完全重叠） */
 .admin-trigger {
     position: fixed;
     top: 0;
@@ -63,22 +75,26 @@ body {
     transform: translateX(-50%);
     width: 100%;
     max-width: 414px;
-    height: calc(60px + env(safe-area-inset-top, 44px));
+    height: calc(var(--nav-height) + var(--nav-top-padding));
+    cursor: pointer;
     z-index: 99999;
     background: transparent;
 }
-/* 首页 */
+
+/* ---------- 首页 ---------- */
 #page-home {
     width: 100%;
     background: var(--white);
-    min-height: calc(100vh - 48px - env(safe-area-inset-top, 44px));
+    min-height: calc(100vh - var(--nav-height) - var(--nav-top-padding));
     position: relative;
 }
+
 .home-mock-bg {
     width: 100%;
     display: block;
     object-fit: contain;
 }
+
 .hotspot-alumni-card {
     position: absolute;
     top: 35%;
@@ -87,13 +103,15 @@ body {
     height: 15%;
     cursor: pointer;
 }
-/* 校友卡 */
+
+/* ---------- 校友卡页面 ---------- */
 #page-card {
     width: 100%;
     display: none;
     flex-direction: column;
     align-items: center;
 }
+
 .alumni-card {
     width: calc(100% - 24px);
     height: 220px;
@@ -105,10 +123,12 @@ body {
     position: relative;
     box-shadow: 0 4px 14px rgba(0,0,0,0.08);
 }
+
 .card-top-area {
     height: calc(100% - 38px);
     position: relative;
 }
+
 .card-serial {
     position: absolute;
     top: 16px;
@@ -117,6 +137,7 @@ body {
     font-family: monospace;
     color: rgba(255,255,255,0.9);
 }
+
 .info-fields {
     position: absolute;
     top: 26px;
@@ -125,23 +146,27 @@ body {
     flex-direction: column;
     gap: 2.5px;
 }
+
 .info-row {
     display: flex;
     align-items: center;
     height: 19px;
 }
+
 .info-label {
     font-size: 14.5px;
     color: rgba(255,255,255,0.95);
     white-space: nowrap;
 }
+
 .info-value {
     font-size: 14.5px;
     color: var(--white) !important;
     white-space: nowrap;
     transition: all 0.2s;
 }
-/* 骨架屏样式 */
+
+/* 骨架屏 */
 .skeleton {
     background: var(--skeleton-grad);
     background-size: 200% 100%;
@@ -156,6 +181,7 @@ body {
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
 }
+
 .card-gold-strip {
     height: 38px;
     width: 100%;
@@ -168,6 +194,8 @@ body {
     color: var(--gold-dark);
     font-weight: bold;
 }
+
+/* 二维码面板 */
 .white-panel {
     width: calc(100% - 24px);
     background: var(--white);
@@ -179,12 +207,14 @@ body {
     align-items: center;
     box-shadow: 0 2px 10px rgba(0,0,0,0.04);
 }
+
 .qr-header-title {
     font-size: 15px;
     color: #333;
     margin-bottom: 18px;
     font-weight: bold;
 }
+
 .qr-box-border {
     width: 205px;
     height: 205px;
@@ -195,10 +225,12 @@ body {
     justify-content: center;
     padding: 8px;
 }
+
 .qr-box-border img {
     max-width: 100%;
     max-height: 100%;
 }
+
 .refresh-lnk {
     margin-top: 14px;
     color: #999;
@@ -216,6 +248,7 @@ body {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
 }
+
 .live-timer-container {
     width: 100%;
     background-color: #5C1315;
@@ -226,7 +259,8 @@ body {
     margin-top: 24px;
     font-weight: bold;
 }
-/* 控制台动态面板样式 */
+
+/* 控制台动态面板 */
 .admin-panel {
     position: fixed;
     top: 0;
@@ -285,6 +319,12 @@ body {
     color: var(--white);
     border: 1px solid #C9262B;
 }
+
+/* 校友列表标题居中 */
+#alumni-header {
+    text-align: center;
+}
+
 /* 自定义弹窗 */
 .custom-toast {
     position: fixed;
@@ -309,6 +349,7 @@ body {
     from { opacity: 1; transform: translateX(-50%) translateY(0); }
     to { opacity: 0; transform: translateX(-50%) translateY(10px); }
 }
+
 .custom-modal-mask {
     position: fixed;
     top: 0;
@@ -354,6 +395,7 @@ body {
 }
 .custom-modal-btn.cancel { color: #999; border-right: 1px solid #eee; }
 .custom-modal-btn.confirm { color: var(--theme-red); font-weight: bold; }
+
 /* 响应式 */
 @media (max-width: 374px) {
     .info-label, .info-value { font-size: 13px; }
