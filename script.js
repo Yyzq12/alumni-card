@@ -5,29 +5,17 @@
 
 const CONTROL_PASSWORD = "5499";
 
-const UPSTASH_URL = "https://social-escargot-66261.upstash.io";
-const UPSTASH_TOKEN = "gQAAAAAAAQLVAAIgcDI5OWQ3MGRjY2FjMWE0ZGZhYWQ5NjhiZDYzZDQwMzMwZQ";
+const UPSTASH_URL = "https://safe-drake-66708.upstash.io";
+const UPSTASH_TOKEN = "gQAAAAAAAQSUAAIgcDI3MmM4Njc1OWU4NjQ0YTQ4YjExNTM3MjM3YTY4ZGY2OQ";
 
 async function redis(command, ...args) {
     const url = `${UPSTASH_URL}/${command}/${args.join('/')}`;
-    try {
-        const resp = await fetch(url, {
-            method: 'GET',
-            headers: { 
-                'Authorization': `Bearer ${UPSTASH_TOKEN}`,
-                'Accept': 'application/json'
-            }
-        });
-        if (!resp.ok) {
-            console.error('Redis 请求失败:', resp.status, await resp.text());
-            throw new Error('Redis 请求失败: ' + resp.status);
-        }
-        const data = await resp.json();
-        return data.result;
-    } catch (e) {
-        console.error('Redis 调用异常:', e);
-        throw e;
-    }
+    const resp = await fetch(url, {
+        headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` }
+    });
+    if (!resp.ok) throw new Error('Redis error: ' + resp.status);
+    const data = await resp.json();
+    return data.result;
 }
 
 const jcMajorDatabase = [
@@ -43,67 +31,48 @@ const jcMajorDatabase = [
     { dept: "外国语学院", major: "外国语言文学", code: "10500" }
 ];
 
-const firstNames = ["张", "李", "王", "刘", "陈", "杨", "赵", "黄", "周", "吴", "徐", "孙", "马", "胡", "郭", "林"];
-const lastNames = ["逸飞", "梦溪", "泽宇", "梓涵", "听风", "晓静", "嘉杰", "雨桐", "博远", "子墨", "瑞霖", "思源", "楚菁", "雪珂", "寒潞"];
+const firstNames = ["张","李","王","刘","陈","杨","赵","黄","周","吴","徐","孙","马","胡","郭","林"];
+const lastNames = ["逸飞","梦溪","泽宇","梓涵","听风","晓静","嘉杰","雨桐","博远","子墨","瑞霖","思源","楚菁","雪珂","寒潞"];
 
-let currentConfig = {
-    cardId: "--------",
-    name: "--",
-    stuId: "--",
-    department: "--",
-    major: "--",
-    gradYear: "--"
-};
+let currentConfig = { cardId: "--------", name: "--", stuId: "--", department: "--", major: "--", gradYear: "--" };
 let currentUserId = "";
 let isCardDataValid = false;
 
 function getChinesePinyinInitials(str) {
     if (!str) return "user";
-    const pinyinMap = {
-        '阿':'a','啊':'a','爱':'a','安':'a','巴':'b','把':'b','白':'b','班':'b','包':'b',
-        '擦':'c','才':'c','参':'c','藏':'c','曾':'c','陈':'c','程':'c','查':'c','楚':'c','初':'c',
-        '大':'d','代':'d','单':'d','邓':'d','丁':'d','俄':'e','恩':'e','儿':'e',
-        '发':'f','范':'f','方':'f','冯':'f','风':'f','高':'g','郭':'g','关':'g','谷':'g','古':'g',
-        '哈':'h','海':'h','韩':'h','何':'h','胡':'h','黄':'h','贾':'j','江':'j','金':'j','景':'j','季':'j',
-        '卡':'k','康':'k','孔':'k','寇':'k','匡':'k','拉':'l','李':'l','林':'l','刘':'l','罗':'l','龙':'l',
-        '马':'m','孟':'m','米':'m','苗':'m','莫':'m','拿':'n','南':'n','宁':'n','牛':'n','年':'n',
-        '欧':'o','欧阳':'o','潘':'p','彭':'p','皮':'p','朴':'p','平':'p','钱':'q','秦':'q','邱':'q','屈':'q','权':'q',
-        '任':'r','阮':'r','饶':'r','容':'r','荣':'r','撒':'s','孙':'s','宋':'s','苏':'s','沈':'s','石':'s',
-        '他':'t','唐':'t','田':'t','佟':'t','涂':'t','王':'w','吴':'w','万':'w','魏':'w','文':'w',
-        '西':'x','夏':'x','肖':'x','谢':'x','许':'x','徐':'x','压':'y','杨':'y','叶':'y','于':'y','余':'y','易':'y',
-        '匝':'z','张':'z','赵':'z','周':'z','郑':'z','朱':'z','左':'z'
+    const m = {
+        '阿':'a','巴':'b','擦':'c','大':'d','俄':'e','发':'f','高':'g','哈':'h','贾':'j','卡':'k','拉':'l','马':'m',
+        '拿':'n','欧':'o','潘':'p','钱':'q','任':'r','撒':'s','他':'t','王':'w','西':'x','压':'y','匝':'z',
+        '陈':'c','胡':'h','林':'l','刘':'l','孙':'s','唐':'t','徐':'x','杨':'y','张':'z','赵':'z','周':'z',
+        '吴':'w','郭':'g','黄':'h','罗':'l','龙':'l','孟':'m','米':'m','苗':'m','莫':'m','南':'n','宁':'n',
+        '牛':'n','年':'n','彭':'p','皮':'p','朴':'p','平':'p','秦':'q','邱':'q','屈':'q','权':'q',
+        '阮':'r','饶':'r','容':'r','荣':'r','宋':'s','苏':'s','沈':'s','石':'s','田':'t','佟':'t','涂':'t',
+        '万':'w','魏':'w','文':'w','夏':'x','肖':'x','谢':'x','许':'x','叶':'y','于':'y','余':'y','易':'y',
+        '郑':'z','朱':'z','左':'z'
     };
-    let result = "";
-    for (let char of str) {
-        if (/[a-zA-Z]/.test(char)) {
-            result += char.toLowerCase();
-        } else if (pinyinMap[char]) {
-            result += pinyinMap[char];
-        } else {
-            result += 'x';
-        }
+    let r = "";
+    for (let c of str) {
+        if (/[a-zA-Z]/.test(c)) r += c.toLowerCase();
+        else r += m[c] || 'x';
     }
-    return result || "uid";
+    return r || "uid";
 }
 
-function getOrCreateDeviceId() {
-    const STORAGE_KEY = 'device_unique_id';
-    let deviceId = localStorage.getItem(STORAGE_KEY);
-    if (!deviceId) {
-        deviceId = 'DEV-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem(STORAGE_KEY, deviceId);
-    }
-    return deviceId;
+function getDeviceId() {
+    const k = 'did';
+    let d = localStorage.getItem(k);
+    if (!d) { d = 'D-' + Date.now() + '-' + Math.random().toString(36).substr(2,6); localStorage.setItem(k, d); }
+    return d;
 }
 
-function forceGoToCardPage() {
+function showCard() {
     document.getElementById('page-home').style.display = 'none';
     document.getElementById('page-card').style.display = 'flex';
     document.getElementById('nav-title').innerText = '校友卡';
     document.getElementById('nav-back-btn').style.visibility = 'visible';
 }
 
-function navigateToHome() {
+function showHome() {
     document.getElementById('page-card').style.display = 'none';
     document.getElementById('page-home').style.display = 'flex';
     document.getElementById('nav-title').innerText = '首页';
@@ -111,77 +80,38 @@ function navigateToHome() {
 }
 
 async function tryNavigateToCard() {
-    if (!isCardDataValid) {
-        alert('⚠️ 此链接无效或校友信息未被收录。\n\n请确认链接是否正确，或联系管理员。');
-        return;
-    }
-
-    const userId = (currentConfig.stuId && currentConfig.stuId !== "--") ? currentConfig.stuId : currentUserId;
-    if (!userId || userId === "--") {
-        alert('系统错误：未检测到有效用户标识。');
-        return;
-    }
-
-    const deviceId = getOrCreateDeviceId();
-
+    if (!isCardDataValid) { alert('链接无效，数据未加载。'); return; }
+    const uid = currentUserId;
+    const did = getDeviceId();
     try {
-        const raw = await redis('GET', `user:${userId}`);
-        
-        if (!raw) {
-            alert('该校友卡不存在，请联系管理员。');
-            return;
+        const raw = await redis('GET', `user:${uid}`);
+        if (!raw) { alert('校友卡不存在。'); return; }
+        const u = JSON.parse(raw);
+        if (u.activated) {
+            if (u.deviceId !== did) { alert('已绑定其他设备。'); return; }
+            showCard(); return;
         }
-
-        const user = JSON.parse(raw);
-
-        if (user.activated) {
-            if (user.deviceId !== deviceId) {
-                alert('🔒 该校友卡已绑定其他设备，当前设备无法访问。');
-                return;
-            }
-            forceGoToCardPage();
-            return;
+        if (confirm('首次激活，绑定此设备？')) {
+            u.activated = true; u.deviceId = did;
+            await redis('SET', `user:${uid}`, JSON.stringify(u));
+            showCard();
         }
-
-        if (confirm("【首次激活】\n该校友卡尚未绑定设备。\n\n确认后将与当前设备永久绑定。\n确认进行绑定吗？")) {
-            user.activated = true;
-            user.deviceId = deviceId;
-            await redis('SET', `user:${userId}`, JSON.stringify(user));
-            forceGoToCardPage();
-        }
-    } catch (e) {
-        console.error(e);
-        alert('网络异常，无法验证设备身份。');
-    }
+    } catch(e) { alert('网络错误'); }
 }
 
 async function resetDeviceLock() {
-    const userId = (currentConfig.stuId && currentConfig.stuId !== "--") ? currentConfig.stuId : currentUserId;
-    if (!userId || userId === "--") {
-        alert('未检测到有效卡片绑定用户。');
-        return;
-    }
-
+    const uid = currentUserId;
+    if (!uid) return;
     try {
-        const raw = await redis('GET', `user:${userId}`);
-        if (raw) {
-            const user = JSON.parse(raw);
-            user.activated = false;
-            user.deviceId = null;
-            await redis('SET', `user:${userId}`, JSON.stringify(user));
-        }
-        alert(`已解除用户 [${userId}] 的设备锁！`);
-    } catch (e) {
-        alert('重置失败，请稍后重试。');
-    }
-
-    if (document.getElementById('page-card').style.display === 'flex') {
-        navigateToHome();
-    }
+        const raw = await redis('GET', `user:${uid}`);
+        if (raw) { const u = JSON.parse(raw); u.activated = false; u.deviceId = null; await redis('SET', `user:${uid}`, JSON.stringify(u)); }
+        alert('已重置');
+    } catch(e) { alert('失败'); }
+    showHome();
     document.getElementById('adminPanel').classList.remove('active');
 }
 
-function renderDomData() {
+function render() {
     document.getElementById('v-cardId').innerText = currentConfig.cardId;
     document.getElementById('v-name').innerText = currentConfig.name;
     document.getElementById('v-stuId').innerText = currentConfig.stuId;
@@ -190,7 +120,7 @@ function renderDomData() {
     document.getElementById('v-gradYear').innerText = currentConfig.gradYear;
 }
 
-function syncConfigToInputs() {
+function sync() {
     document.getElementById('i-cardId').value = currentConfig.cardId === "--------" ? "" : currentConfig.cardId;
     document.getElementById('i-name').value = currentConfig.name === "--" ? "" : currentConfig.name;
     document.getElementById('i-stuId').value = currentConfig.stuId === "--" ? "" : currentConfig.stuId;
@@ -199,60 +129,36 @@ function syncConfigToInputs() {
     document.getElementById('i-gradYear').value = currentConfig.gradYear === "--" ? "" : currentConfig.gradYear;
 }
 
-async function parseUrlParams() {
-    const params = new URLSearchParams(window.location.search);
-    isCardDataValid = false;
-
-    const id = params.get('id');
+async function load() {
+    const id = new URLSearchParams(window.location.search).get('id');
     if (!id) return;
-
     currentUserId = id;
-
     try {
         const raw = await redis('GET', `user:${id}`);
-
         if (raw) {
             const u = JSON.parse(raw);
-            currentConfig = {
-                cardId: u.cardId || "JCCUT000000",
-                name: u.name || "未命名",
-                stuId: u.stuId || "未设定",
-                department: u.department || "未设定",
-                major: u.major || "未设定",
-                gradYear: u.gradYear || "2020"
-            };
+            currentConfig = { cardId: u.cardId||"", name: u.name||"", stuId: u.stuId||"", department: u.department||"", major: u.major||"", gradYear: u.gradYear||"" };
             isCardDataValid = true;
-            renderDomData();
-            syncConfigToInputs();
-        } else {
-            currentConfig = { cardId: "--------", name: "--", stuId: "--", department: "--", major: "--", gradYear: "--" };
-            renderDomData();
+            render();
+            sync();
         }
-    } catch (e) {
-        currentConfig = { cardId: "--------", name: "--", stuId: "--", department: "--", major: "--", gradYear: "--" };
-        renderDomData();
-    }
+    } catch(e) { console.error(e); }
 }
 
-function generateRandomStuId() {
-    const startYear = Math.floor(Math.random() * (2020 - 2016 + 1)) + 2016;
-    const randomMajorMeta = jcMajorDatabase[Math.floor(Math.random() * jcMajorDatabase.length)];
-    const classNum = String(Math.floor(Math.random() * 3) + 1).padStart(2, '0');
-    const seatNum = String(Math.floor(Math.random() * 40) + 1).padStart(2, '0');
-    const finalStuId = `${startYear}${randomMajorMeta.code}${classNum}${seatNum}`;
-    const gradYear = startYear + 4;
-    const randomName = firstNames[Math.floor(Math.random() * firstNames.length)] + lastNames[Math.floor(Math.random() * lastNames.length)];
-
-    document.getElementById('i-stuId').value = finalStuId;
-    document.getElementById('i-name').value = randomName;
-    document.getElementById('i-department').value = randomMajorMeta.dept;
-    document.getElementById('i-major').value = randomMajorMeta.major;
-    document.getElementById('i-gradYear').value = gradYear;
-    document.getElementById('i-cardId').value = `JCCUT${startYear}0${Math.floor(Math.random() * 80) + 10}`;
+function random() {
+    const y = Math.floor(Math.random()*5)+2016;
+    const m = jcMajorDatabase[Math.floor(Math.random()*jcMajorDatabase.length)];
+    const sid = `${y}${m.code}${String(Math.floor(Math.random()*3)+1).padStart(2,'0')}${String(Math.floor(Math.random()*40)+1).padStart(2,'0')}`;
+    document.getElementById('i-stuId').value = sid;
+    document.getElementById('i-name').value = firstNames[Math.floor(Math.random()*firstNames.length)] + lastNames[Math.floor(Math.random()*lastNames.length)];
+    document.getElementById('i-department').value = m.dept;
+    document.getElementById('i-major').value = m.major;
+    document.getElementById('i-gradYear').value = y+4;
+    document.getElementById('i-cardId').value = `JCCUT${y}0${Math.floor(Math.random()*80)+10}`;
 }
 
-async function generateStandaloneUrl() {
-    const cfg = {
+async function generate() {
+    const c = {
         cardId: document.getElementById('i-cardId').value.trim(),
         name: document.getElementById('i-name').value.trim(),
         stuId: document.getElementById('i-stuId').value.trim(),
@@ -260,121 +166,55 @@ async function generateStandaloneUrl() {
         major: document.getElementById('i-major').value.trim(),
         gradYear: document.getElementById('i-gradYear').value.trim()
     };
-
-    if (!cfg.name || !cfg.stuId) {
-        alert('姓名和学号不能为空！');
-        return;
-    }
-
-    const initials = getChinesePinyinInitials(cfg.name);
-    const lastTwoDigits = cfg.stuId.length >= 2 ? cfg.stuId.slice(-2) : "00";
-    const computedId = initials + lastTwoDigits;
-
-    let baseUrl = window.location.origin + window.location.pathname;
-    baseUrl = baseUrl.replace(/\/$/, '');
-    const standaloneUrl = `${baseUrl}?id=${computedId}`;
-
-    try {
-        const exists = await redis('EXISTS', `user:${computedId}`);
-        if (exists) {
-            alert(`短ID "${computedId}" 已存在。`);
-            return;
-        }
-
-        const user = {
-            name: cfg.name,
-            stuId: cfg.stuId,
-            cardId: cfg.cardId,
-            department: cfg.department,
-            major: cfg.major,
-            gradYear: cfg.gradYear,
-            activated: false,
-            deviceId: null,
-            createdAt: Date.now()
-        };
-        await redis('SET', `user:${computedId}`, JSON.stringify(user));
-
-        currentConfig = cfg;
-        currentUserId = computedId;
-        isCardDataValid = true;
-        renderDomData();
-
-        try {
-            await navigator.clipboard.writeText(standaloneUrl);
-            alert(`🎉 生成成功！\n\n短ID：${computedId}\n链接已自动复制。`);
-        } catch (clipErr) {
-            alert(`🎉 生成成功！\n\n短ID：${computedId}\n\n请手动复制：\n${standaloneUrl}`);
-        }
-    } catch (e) {
-        console.error(e);
-        alert('保存失败：' + e.message);
-    }
-}
-
-async function listAlumni() {
-    try {
-        const keys = await redis('KEYS', 'user:*');
-        if (!keys || keys.length === 0) {
-            alert('当前没有任何校友数据。');
-            return;
-        }
-        const values = await redis('MGET', ...keys);
-        let text = `共 ${keys.length} 位校友：\n\n`;
-        keys.forEach((key, i) => {
-            const u = JSON.parse(values[i] || '{}');
-            text += `${i + 1}. ${u.name} (${u.stuId})\n   短ID: ${key.replace('user:', '')} | ${u.department} ${u.major}\n   ${u.gradYear}届 | ${u.activated ? '已激活' : '未激活'}\n\n`;
-        });
-        alert(text);
-    } catch (e) {
-        alert('获取列表失败：' + e.message);
-    }
-}
-
-async function deleteAlumni() {
-    const id = prompt('请输入要删除的校友短ID：');
-    if (!id) return;
-    if (!confirm(`确认删除校友 "${id}" 吗？此操作不可恢复！`)) return;
-
+    if (!c.name || !c.stuId) { alert('姓名和学号必填'); return; }
+    const id = getChinesePinyinInitials(c.name) + c.stuId.slice(-2);
+    const url = window.location.origin + window.location.pathname.replace(/\/$/,'') + '?id=' + id;
     try {
         const exists = await redis('EXISTS', `user:${id}`);
-        if (!exists) {
-            alert(`校友 "${id}" 不存在。`);
-            return;
-        }
-        await redis('DEL', `user:${id}`);
-        alert(`校友 "${id}" 已删除。`);
-    } catch (e) {
-        alert('删除失败：' + e.message);
-    }
+        if (exists) { alert('短ID已存在'); return; }
+        await redis('SET', `user:${id}`, JSON.stringify({...c, activated: false, deviceId: null, createdAt: Date.now()}));
+        currentConfig = c; currentUserId = id; isCardDataValid = true; render();
+        try { await navigator.clipboard.writeText(url); alert('✅ 成功！链接已复制。'); }
+        catch(e) { prompt('请手动复制：', url); }
+    } catch(e) { alert('保存失败：' + e.message); }
 }
 
-function closePanel() {
-    document.getElementById('adminPanel').classList.remove('active');
+async function list() {
+    try {
+        const keys = await redis('KEYS', 'user:*');
+        if (!keys || !keys.length) { alert('暂无数据，请先生成校友卡。'); return; }
+        const vals = await redis('MGET', ...keys);
+        let t = `共${keys.length}条：\n\n`;
+        keys.forEach((k,i) => { const u = JSON.parse(vals[i]||'{}'); t += `${i+1}. ${u.name} ${u.stuId}\n   ID:${k.replace('user:','')} ${u.activated?'已激活':'未激活'}\n\n`; });
+        alert(t);
+    } catch(e) { alert('获取失败：' + e.message); }
 }
 
-document.getElementById('gestureArea').addEventListener('touchstart', (e) => {
-    if (e.touches.length == 3) {
-        const pwd = prompt('请输入控制台密码：');
-        if (pwd === CONTROL_PASSWORD) {
-            document.getElementById('adminPanel').classList.add('active');
-            syncConfigToInputs();
-        } else if (pwd !== null) {
-            alert('密码错误');
-        }
+async function del() {
+    const id = prompt('输入要删除的短ID:');
+    if (!id) return;
+    if (!confirm('确认删除 '+id+' ?')) return;
+    try { await redis('DEL', `user:${id}`); alert('已删除'); }
+    catch(e) { alert('失败'); }
+}
+
+function closePanel() { document.getElementById('adminPanel').classList.remove('active'); }
+
+document.getElementById('gestureArea').addEventListener('touchstart', e => {
+    if (e.touches.length === 3) {
+        const p = prompt('密码:');
+        if (p === CONTROL_PASSWORD) { document.getElementById('adminPanel').classList.add('active'); sync(); }
+        else if (p !== null) alert('密码错误');
     }
 });
 
-function runClock() {
-    const now = new Date();
-    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    const bj = new Date(utc + (3600000 * 8));
-    document.getElementById('live-clock-bar').innerText =
-        `当前时间：${bj.getFullYear()}年${String(bj.getMonth()+1).padStart(2,'0')}月${String(bj.getDate()).padStart(2,'0')}日 ${String(bj.getHours()).padStart(2,'0')}:${String(bj.getMinutes()).padStart(2,'0')}:${String(bj.getSeconds()).padStart(2,'0')}`;
+function clock() {
+    const d = new Date();
+    const bj = new Date(d.getTime() + d.getTimezoneOffset()*60000 + 28800000);
+    document.getElementById('live-clock-bar').innerText = `当前时间：${bj.getFullYear()}年${String(bj.getMonth()+1).padStart(2,'0')}月${String(bj.getDate()).padStart(2,'0')}日 ${String(bj.getHours()).padStart(2,'0')}:${String(bj.getMinutes()).padStart(2,'0')}:${String(bj.getSeconds()).padStart(2,'0')}`;
 }
 
-function triggerManualRefresh() { runClock(); }
-
-navigateToHome();
-parseUrlParams();
-runClock();
-setInterval(runClock, 1000);
+showHome();
+load();
+clock();
+setInterval(clock, 1000);
