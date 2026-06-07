@@ -526,12 +526,12 @@ async function loadAlumniTable(forceRefresh = false) {
         let html = `<table style="width:100%; border-collapse:collapse; color:#fff; font-size:13px;">
             <thead>
                 <tr style="border-bottom:2px solid #555;">
-                    <th style="padding:8px 4px; text-align:left; width:8%;">状态</th>
+                    <th style="padding:8px 4px; text-align:left; width:10%;">状态</th>
                     <th style="padding:8px 4px; text-align:left; width:18%;">姓名</th>
                     <th style="padding:8px 4px; text-align:left; width:12%;">短ID</th>
-                    <th style="padding:8px 4px; text-align:left; width:37%;">专业</th>
-                    <th style="padding:8px 4px; text-align:center; width:10%;">链接</th>
-                    <th style="padding:8px 4px; text-align:center; width:15%;">删除</th>
+                    <th style="padding:8px 4px; text-align:left; width:34%;">专业</th>
+                    <th style="padding:8px 4px; text-align:center; width:13%;">链接</th>
+                    <th style="padding:8px 4px; text-align:center; width:13%;">删除</th>
                 </tr>
             </thead>
             <tbody>`;
