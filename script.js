@@ -1,6 +1,6 @@
 /* ==========================================
-   荆楚理工学院 移动校园 - 最终完整版
-   包含：注册 UI、审核功能、校友列表管理、设备锁、Canvas指纹等
+   荆楚理工学院 移动校园 - 基础版（无审核、无注册）
+   包含：Canvas指纹、动态控制台、校友列表（排序）、删除确认显示姓名
    ========================================== */
 
 'use strict';
@@ -98,7 +98,6 @@ const ADMIN_PANEL_HTML = `
         <div class="form-group"><label>毕业年份</label><input type="text" id="i-gradYear" value="2020" inputmode="numeric"></div>
         <button class="random-badge-btn-block" onclick="window.random()">🎲 随机专业与学号(2016-2020)</button>
         <button class="panel-btn" style="background:#28a745;" onclick="window.generate()">🚀 生成并复制链接</button>
-        <button class="panel-btn" style="background:#17a2b8;" onclick="window.showPendingList()">⏳ 待审核校友</button>
         <button class="panel-btn" style="background:#ff9f43;" onclick="window.resetDeviceLock()">🔓 重置设备锁</button>
         <button class="panel-btn" style="background:#444;" onclick="window.closePanel()">关闭控制台</button>
         
@@ -268,13 +267,6 @@ async function tryNavigateToCard() {
             return;
         }
         const userData = JSON.parse(raw);
-        
-        // 审核状态检查
-        if (userData.approved === false) {
-            showToast('您的账号尚未通过管理员审核，请耐心等待');
-            return;
-        }
-        
         if (userData.activated) {
             if (userData.deviceId !== deviceId) {
                 showToast('设备验证失败，该校友卡已在其他设备绑定');
@@ -428,7 +420,6 @@ async function generate() {
         await redis('SET', `user:${shortId}`, JSON.stringify({
             cardId, name, stuId, department, major, gradYear,
             activated: false,
-            approved: true,        // 后台生成默认审核通过
             deviceId: null,
             createdAt: Date.now()
         }));
@@ -449,7 +440,7 @@ async function generate() {
     }
 }
 
-// ------------------- 校友表格（已审核） -------------------
+// ------------------- 校友表格（按时间排序，删除确认显示姓名） -------------------
 const ALUMNI_CACHE_KEY = 'alumni_list_cache';
 const CACHE_TTL = 5 * 60 * 1000;
 
@@ -486,15 +477,13 @@ async function loadAlumniTable(forceRefresh = false) {
                 const vals = await redis('MGET', ...userKeys);
                 for (let j = 0; j < batchIds.length; j++) {
                     const u = JSON.parse(vals[j] || '{}');
-                    if (u.approved !== false) {
-                        list.push({
-                            id: batchIds[j],
-                            name: u.name || '?',
-                            major: u.major || '—',
-                            activated: u.activated || false,
-                            createdAt: u.createdAt || 0
-                        });
-                    }
+                    list.push({
+                        id: batchIds[j],
+                        name: u.name || '?',
+                        major: u.major || '—',
+                        activated: u.activated || false,
+                        createdAt: u.createdAt || 0
+                    });
                 }
             }
             alumniList = list;
@@ -572,234 +561,16 @@ window.deleteAlumniById = async function(id) {
         localStorage.removeItem(ALUMNI_CACHE_KEY);
         showToast(`已删除校友 ${name}`);
         await loadAlumniTable(true);
-        if (window._pendingListOpen) await showPendingList();
     } catch (e) {
         showToast(`删除失败：${e.message}`);
     }
 };
 
-// ------------------- 待审核列表 -------------------
-window.showPendingList = async function() {
-    const container = document.getElementById('alumni-table-container');
-    const headerDiv = document.getElementById('alumni-header');
-    if (!container || !headerDiv) return;
-    
-    try {
-        const allKeys = await redis('KEYS', 'user:*');
-        if (!allKeys || allKeys.length === 0) {
-            headerDiv.innerText = '待审核校友 (0)';
-            container.innerHTML = '<div style="text-align:center;padding:20px;color:#aaa;">暂无待审核数据</div>';
-            return;
-        }
-        const ids = allKeys.map(key => key.replace('user:', ''));
-        const batchSize = 50;
-        let pendingList = [];
-        for (let i = 0; i < ids.length; i += batchSize) {
-            const batchIds = ids.slice(i, i + batchSize);
-            const userKeys = batchIds.map(id => `user:${id}`);
-            const vals = await redis('MGET', ...userKeys);
-            for (let j = 0; j < batchIds.length; j++) {
-                const u = JSON.parse(vals[j] || '{}');
-                if (u.approved === false) {
-                    pendingList.push({
-                        id: batchIds[j],
-                        name: u.name || '?',
-                        stuId: u.stuId || '',
-                        department: u.department || '',
-                        major: u.major || '',
-                        gradYear: u.gradYear || ''
-                    });
-                }
-            }
-        }
-        
-        headerDiv.innerText = `待审核校友 (${pendingList.length})`;
-        if (pendingList.length === 0) {
-            container.innerHTML = '<div style="text-align:center;padding:20px;color:#aaa;">暂无待审核数据</div>';
-            return;
-        }
-        
-        let html = `<table style="width:100%; border-collapse:collapse; color:#fff; font-size:12px;">
-            <thead>
-                <tr style="border-bottom:2px solid #555;">
-                    <th style="padding:6px 2px;">姓名</th>
-                    <th style="padding:6px 2px;">学号</th>
-                    <th style="padding:6px 2px;">院系</th>
-                    <th style="padding:6px 2px;">专业</th>
-                    <th style="padding:6px 2px;">毕业年份</th>
-                    <th style="padding:6px 2px;">操作</th>
-                </tr>
-            </thead>
-            <tbody>`;
-        for (const item of pendingList) {
-            html += `<tr style="border-bottom:1px solid #333;">
-                <td style="padding:6px 2px;">${escapeHtml(item.name)}</td>
-                <td style="padding:6px 2px;">${escapeHtml(item.stuId)}</td>
-                <td style="padding:6px 2px;">${escapeHtml(item.department)}</td>
-                <td style="padding:6px 2px;">${escapeHtml(item.major)}</td>
-                <td style="padding:6px 2px;">${escapeHtml(item.gradYear)}</td>
-                <td style="padding:6px 2px; text-align:center;">
-                    <button onclick="window.approveAlumni('${item.id}')" style="background:#28a745; border:none; color:#fff; padding:2px 8px; border-radius:3px; margin-right:4px; cursor:pointer;">通过</button>
-                    <button onclick="window.rejectAlumni('${item.id}')" style="background:#d9534f; border:none; color:#fff; padding:2px 8px; border-radius:3px; cursor:pointer;">拒绝</button>
-                </td>
-            </tr>`;
-        }
-        html += `</tbody></table>`;
-        container.innerHTML = html;
-        window._pendingListOpen = true;
-    } catch (e) {
-        console.error('加载待审核列表失败', e);
-        headerDiv.innerText = '加载失败';
-        container.innerHTML = `<div style="text-align:center;padding:20px;color:#f66;">错误：${e.message}</div>`;
-    }
-};
-
-window.approveAlumni = async function(id) {
-    try {
-        const raw = await redis('GET', `user:${id}`);
-        if (!raw) {
-            showToast('校友不存在');
-            return;
-        }
-        const userData = JSON.parse(raw);
-        userData.approved = true;
-        await redis('SET', `user:${id}`, JSON.stringify(userData));
-        showToast(`已通过 ${userData.name || id} 的审核`);
-        await showPendingList();
-        await loadAlumniTable(true);
-    } catch (e) {
-        showToast(`操作失败：${e.message}`);
-    }
-};
-
-window.rejectAlumni = async function(id) {
-    let name = id;
-    try {
-        const raw = await redis('GET', `user:${id}`);
-        if (raw) {
-            const userData = JSON.parse(raw);
-            name = userData.name || id;
-        }
-    } catch (e) { /* ignore */ }
-    const confirmed = await showConfirm(`确认拒绝校友 “${name}” 的申请并删除记录吗？`, '拒绝申请');
-    if (!confirmed) return;
-    try {
-        await redis('DEL', `user:${id}`);
-        await redis('SREM', 'alumni:index', id);
-        showToast(`已拒绝并删除 ${name}`);
-        await showPendingList();
-        await loadAlumniTable(true);
-    } catch (e) {
-        showToast(`操作失败：${e.message}`);
-    }
-};
-
-// ------------------- 注册功能 -------------------
-let currentCaptcha = { text: '', answer: 0 };
-
-function generateCaptcha() {
-    const a = Math.floor(Math.random() * 10);
-    const b = Math.floor(Math.random() * 10);
-    currentCaptcha = {
-        text: `${a} + ${b} = ?`,
-        answer: a + b
-    };
-    const captchaSpan = document.getElementById('captcha-question');
-    if (captchaSpan) captchaSpan.innerText = currentCaptcha.text;
+async function list(forceRefresh = false) {
+    await loadAlumniTable(forceRefresh);
 }
 
-function showRegisterModal() {
-    const modal = document.getElementById('register-modal');
-    if (!modal) return;
-    generateCaptcha();
-    modal.style.display = 'flex';
-    // 清空表单
-    document.getElementById('reg-name').value = '';
-    document.getElementById('reg-stuId').value = '';
-    document.getElementById('reg-department').value = '';
-    document.getElementById('reg-major').value = '';
-    document.getElementById('reg-gradYear').value = '';
-    document.getElementById('reg-captcha').value = '';
-}
-
-function closeRegisterModal() {
-    const modal = document.getElementById('register-modal');
-    if (modal) modal.style.display = 'none';
-}
-
-async function submitRegister() {
-    const name = document.getElementById('reg-name').value.trim();
-    const stuId = document.getElementById('reg-stuId').value.trim();
-    const department = document.getElementById('reg-department').value.trim() || '未填写';
-    const major = document.getElementById('reg-major').value.trim() || '未填写';
-    const gradYear = document.getElementById('reg-gradYear').value.trim() || '2020';
-    const captcha = document.getElementById('reg-captcha').value.trim();
-
-    if (!name || !stuId) {
-        showToast('姓名和学号不能为空');
-        return;
-    }
-    if (parseInt(captcha) !== currentCaptcha.answer) {
-        showToast('验证码错误');
-        generateCaptcha();
-        return;
-    }
-
-    // 频率限制（同一浏览器每天最多注册3次）
-    const REG_LIMIT_KEY = 'reg_limit';
-    const today = new Date().toDateString();
-    const regLimitRaw = localStorage.getItem(REG_LIMIT_KEY);
-    if (regLimitRaw) {
-        const { date, count } = JSON.parse(regLimitRaw);
-        if (date === today && count >= 3) {
-            showToast('今日注册次数已达上限，请明天再试');
-            return;
-        }
-    }
-
-    try {
-        const shortId = await generateUniqueShortId(name, stuId);
-        const cardId = `JCCUT${gradYear}0${Math.floor(Math.random() * 80) + 10}`;
-        const userData = {
-            cardId,
-            name,
-            stuId,
-            department,
-            major,
-            gradYear,
-            activated: false,
-            approved: false,      // 需要管理员审核
-            deviceId: null,
-            createdAt: Date.now()
-        };
-        await redis('SET', `user:${shortId}`, JSON.stringify(userData));
-        await redis('SADD', 'alumni:index', shortId);
-        
-        // 更新注册次数
-        let newCount = 1;
-        if (regLimitRaw) {
-            const { date, count } = JSON.parse(regLimitRaw);
-            if (date === today) newCount = count + 1;
-        }
-        localStorage.setItem(REG_LIMIT_KEY, JSON.stringify({ date: today, count: newCount }));
-        
-        showToast(`注册成功！您的校友卡ID：${shortId}，请等待管理员审核`);
-        closeRegisterModal();
-        
-        // 可选：询问是否复制短ID
-        const copy = await showConfirm(`您的短ID为 ${shortId}，是否复制链接以便后续查看？`, '注册信息');
-        if (copy) {
-            const link = `${window.location.origin}${window.location.pathname.replace(/\/$/, '')}?id=${shortId}`;
-            await copyToClipboard(link);
-            showToast('链接已复制到剪贴板，审核通过后可访问');
-        }
-    } catch (e) {
-        console.error(e);
-        showToast(`注册失败：${e.message}`);
-    }
-}
-
-// ------------------- 三指手势打开控制台 -------------------
+// ------------------- 12. 三指手势打开控制台 -------------------
 const gestureArea = document.getElementById('gestureArea');
 if (gestureArea) {
     gestureArea.addEventListener('touchstart', async (e) => {
@@ -817,7 +588,6 @@ if (gestureArea) {
                 bindConsoleEvents();
                 updateUI();
                 await loadAlumniTable();
-                window._pendingListOpen = false;
             } else if (pwd !== null) {
                 showToast('密码错误');
             }
@@ -839,10 +609,9 @@ function closePanel() {
     const panel = document.getElementById('adminPanel');
     if (panel) panel.remove();
     DOM.iCardId = DOM.iName = DOM.iStuId = DOM.iDepartment = DOM.iMajor = DOM.iGradYear = null;
-    window._pendingListOpen = false;
 }
 
-// ------------------- 北京时间时钟 & 刷新按钮旋转 -------------------
+// ------------------- 13. 北京时间时钟 + 刷新按钮旋转 -------------------
 function updateClock() {
     const now = new Date();
     const beijing = new Date(now.getTime() + now.getTimezoneOffset() * 60000 + 28800000);
@@ -858,24 +627,18 @@ function triggerManualRefresh() {
     updateClock();
 }
 
-// ------------------- 启动 -------------------
+// ------------------- 14. 启动 -------------------
 showHome();
 load();
 updateClock();
 setInterval(updateClock, 1000);
 
-// 暴露全局函数
 window.showHome = showHome;
 window.tryNavigateToCard = tryNavigateToCard;
 window.triggerManualRefresh = triggerManualRefresh;
 window.random = random;
 window.generate = generate;
+window.list = list;
 window.resetDeviceLock = resetDeviceLock;
 window.closePanel = closePanel;
 window.deleteAlumniById = deleteAlumniById;
-window.showPendingList = showPendingList;
-window.approveAlumni = approveAlumni;
-window.rejectAlumni = rejectAlumni;
-window.showRegisterModal = showRegisterModal;
-window.closeRegisterModal = closeRegisterModal;
-window.submitRegister = submitRegister;
