@@ -276,7 +276,7 @@ async function tryNavigateToCard() {
             showCard();
             return;
         }
-        const ok = await showConfirm('点击"确定"后，此校友卡将与当前设备锁定绑定，他人将无法使用。', '欢迎使用校友卡');
+        const ok = await showConfirm('点击"确定"后，此校友卡将与当前设备绑定，他人将无法使用，是否确认绑定。', '欢迎使用校友卡');
         if (ok) {
             userData.activated = true;
             userData.deviceId = deviceId;
