@@ -33,16 +33,18 @@ body {
     position: relative;
 }
 
-/* ---------- 顶部导航栏 ---------- */
+/* ---------- 顶部导航栏（优化间距 + 内容靠下） ---------- */
 .wx-nav {
     width: 100%;
-    padding-top: env(safe-area-inset-top, 44px);  /* 适配刘海屏 */
-    height: calc(48px + env(safe-area-inset-top, 44px));
+    /* 基础顶部内边距12px，同时适配刘海屏（取较大值） */
+    padding-top: max(12px, env(safe-area-inset-top, 12px));
+    height: calc(48px + max(12px, env(safe-area-inset-top, 12px)));
     display: flex;
-    align-items: center;
+    align-items: flex-end;              /* 底部对齐，使内容靠下 */
     justify-content: space-between;
     padding-left: 16px;
     padding-right: 16px;
+    padding-bottom: 8px;               /* 与底部的距离（下方1/4处效果） */
     color: #FFF;                        /* 导航栏文字颜色 */
     font-size: 16px;
     font-weight: bold;
@@ -71,7 +73,7 @@ body {
     transform: translateX(-50%);
     width: 100%;
     max-width: 414px;
-    height: calc(60px + env(safe-area-inset-top, 44px));
+    height: calc(48px + max(12px, env(safe-area-inset-top, 12px))); /* 与导航栏高度一致 */
     cursor: pointer;
     z-index: 99999;
     -webkit-user-select: none;
@@ -87,7 +89,7 @@ body {
     flex-direction: column;
     position: relative;
     background: #FFF;                   /* 首页背景白色 */
-    min-height: calc(100vh - 48px - env(safe-area-inset-top, 44px));
+    min-height: calc(100vh - 48px - max(12px, env(safe-area-inset-top, 12px))); /* 适配导航栏高度 */
     padding-bottom: 80px;
 }
 
