@@ -2,117 +2,67 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <!-- 移动端视口配置：禁止缩放，全屏适配 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <!-- 禁用电话号码、邮箱、地址的自动识别 -->
-    <meta name="format-detection" content="telephone=no, email=no, adress=no">
-    <!-- iOS Safari 全屏模式 -->
+    <meta name="format-detection" content="telephone=no, email=no, address=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <!-- iOS 状态栏样式：黑色半透明 -->
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <!-- 添加到主屏幕时的标题 -->
     <meta name="apple-mobile-web-app-title" content="荆楚理工学院 移动校园">
-    <!-- 主屏幕图标 -->
     <link rel="apple-touch-icon" href="icon.png">
-    <!-- 禁用浏览器缓存，确保每次获取最新版本 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
 
-    <!-- 🚀 性能优化：提前解析并连接 Upstash Redis 数据库，减少首次请求延迟 -->
     <link rel="dns-prefetch" href="https://becoming-trout-101437.upstash.io">
     <link rel="preconnect" href="https://becoming-trout-101437.upstash.io">
 
+    <!-- 预加载关键图片，提升首屏渲染速度 -->
+    <link rel="preload" as="image" href="home-bg.png">
+    <link rel="preload" as="image" href="card-bg.png">
+
     <title>荆楚理工学院 移动校园</title>
-    <!-- 引入样式文件 -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- 三指触摸触发区域（透明覆盖层），用于打开隐藏控制台 -->
-    <div class="admin-trigger" id="gestureArea"></div>
+    <div class="admin-trigger" id="gestureArea" aria-label="三指触摸打开控制台"></div>
     
-    <!-- 模拟微信小程序外壳容器 -->
-    <div class="wx-container">
-        <!-- 顶部导航栏 -->
-        <div class="wx-nav">
-            <!-- 返回按钮，默认隐藏，仅在卡片页显示 -->
-            <span id="nav-back-btn" onclick="showHome()" style="cursor:pointer; visibility: hidden;">〈 首页</span>
-            <!-- 动态标题：首页 / 校友卡 -->
+    <div class="wx-container" role="main">
+        <header class="wx-nav">
+            <span id="nav-back-btn" onclick="showHome()" style="cursor:pointer; visibility: hidden;" aria-label="返回首页">〈 首页</span>
             <span id="nav-title">首页</span>
-            <!-- 模拟微信右上角胶囊按钮（纯装饰） -->
-            <div class="wx-capsule"><span>•••</span> <span>●</span></div>
-        </div>
+            <div class="wx-capsule" aria-hidden="true"><span>•••</span> <span>●</span></div>
+        </header>
         
-        <!-- 首页视图 -->
-        <div id="page-home">
-            <!-- 模拟小程序界面的背景图，可替换为实际图片 -->
-            <img class="home-mock-bg" src="home-bg.png" alt="小程序首页">
-            <!-- 透明热区：用户点击此处触发跳转校友卡（需通过设备验证） -->
-            <div class="hotspot-alumni-card" onclick="tryNavigateToCard()"></div>
-        </div>
+        <section id="page-home">
+            <img class="home-mock-bg" src="home-bg.png" alt="荆楚理工学院小程序首页背景" loading="eager">
+            <div class="hotspot-alumni-card" onclick="tryNavigateToCard()" aria-label="点击进入校友卡"></div>
+        </section>
         
-        <!-- 校友卡详情页（默认隐藏） -->
-        <div id="page-card">
-            <!-- 校友卡卡片主体 -->
+        <section id="page-card" style="display: none;">
             <div class="alumni-card">
                 <div class="card-top-area">
-                    <!-- 右上角卡号（动态绑定） -->
                     <div class="card-serial" id="v-cardId">--------</div>
-                    <!-- 信息字段组：姓名、学号、院系、专业、毕业年份 -->
                     <div class="info-fields">
-                        <div class="info-row"><div class="info-label">姓名：</div><div class="info-value" id="v-name">--</div></div>
-                        <div class="info-row"><div class="info-label">学号：</div><div class="info-value" id="v-stuId">--</div></div>
-                        <div class="info-row"><div class="info-label">院系：</div><div class="info-value" id="v-department">--</div></div>
-                        <div class="info-row"><div class="info-label">专业：</div><div class="info-value" id="v-major">--</div></div>
-                        <div class="info-row"><div class="info-label">毕业年份：</div><div class="info-value" id="v-gradYear">--</div></div>
+                        <div class="info-row"><div class="info-label">姓名：</div><div class="info-value skeleton" id="v-name">--</div></div>
+                        <div class="info-row"><div class="info-label">学号：</div><div class="info-value skeleton" id="v-stuId">--</div></div>
+                        <div class="info-row"><div class="info-label">院系：</div><div class="info-value skeleton" id="v-department">--</div></div>
+                        <div class="info-row"><div class="info-label">专业：</div><div class="info-value skeleton" id="v-major">--</div></div>
+                        <div class="info-row"><div class="info-label">毕业年份：</div><div class="info-value skeleton" id="v-gradYear">--</div></div>
                     </div>
                 </div>
-                <!-- 底部金色装饰条 -->
                 <div class="card-gold-strip"></div>
             </div>
 
-            <!-- 二维码面板 -->
             <div class="white-panel">
                 <div class="qr-header-title">校友二维码</div>
                 <div class="qr-box-border">
-                    <!-- 静态二维码图片，可替换为动态生成 -->
-                    <img id="v-qr" src="qr.png" alt="二维码">
+                    <img id="v-qr" src="qr.png" alt="校友卡二维码" loading="lazy">
                 </div>
-                <!-- 刷新按钮（手动更新时间） -->
-                <div class="refresh-lnk" onclick="triggerManualRefresh()">↻ 刷新</div>
-                <!-- 北京时间实时显示 -->
+                <div class="refresh-lnk" onclick="triggerManualRefresh()" aria-label="刷新时间">↻ 刷新</div>
                 <div class="live-timer-container" id="live-clock-bar">当前时间：读取中...</div>
             </div>
-        </div>
+        </section>
     </div>
 
-    <!-- 控制台面板（管理员后台，默认隐藏） -->
-    <div class="admin-panel" id="adminPanel">
-        <div class="admin-panel-header">
-            <h3 style="color:#C9262B; font-size:18px;">荆楚理工学院控制台</h3>
-        </div>
-        <!-- 免责声明 -->
-        <div style="background: rgba(199, 38, 43, 0.15); border: 1px solid #C9262B; padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 11px; color: #ffbcbc; line-height: 1.5;">
-            <strong>⚠️ 免责提示：</strong>本项目仅供技术交流与娱乐演示，严禁用于非法用途。
-        </div>
-        <!-- 可编辑字段：卡号、姓名、学号、院系、专业、毕业年份 -->
-        <div class="form-group"><label>右上角卡号</label><input type="text" id="i-cardId" value="JCCUT20160892"></div>
-        <div class="form-group"><label>姓名</label><input type="text" id="i-name" value="唐海林"></div>
-        <div class="form-group"><label>学号</label><input type="text" id="i-stuId" value="2016211020208"></div>
-        <div class="form-group"><label>院系</label><input type="text" id="i-department" value="经济与管理学院"></div>
-        <div class="form-group"><label>专业</label><input type="text" id="i-major" value="财务管理"></div>
-        <div class="form-group"><label>毕业年份</label><input type="text" id="i-gradYear" value="2020"></div>
-        
-        <!-- 功能按钮组 -->
-        <button class="random-badge-btn-block" onclick="random()">🎲 随机专业与学号(2016-2020)</button>
-        <button class="panel-btn" style="background:#28a745; color:#fff;" onclick="generate()">🚀 生成并复制链接</button>
-        <button class="panel-btn" style="background:#5bc0de; color:#fff;" onclick="list()">📋 查看所有校友</button>
-        <button class="panel-btn" style="background:#d9534f; color:#fff;" onclick="del()">🗑️ 删除校友</button>
-        <button class="panel-btn" style="background:#ff9f43; color:#fff;" onclick="resetDeviceLock()">🔓 重置设备锁</button>
-        <button class="panel-btn" style="background:#444;" onclick="closePanel()">关闭控制台</button>
-    </div>
-
-    <!-- 引入核心逻辑脚本（数据管理、设备锁、控制台功能等） -->
     <script src="script.js"></script>
 </body>
 </html>
