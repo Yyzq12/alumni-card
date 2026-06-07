@@ -1,16 +1,15 @@
 /* ==========================================
    荆楚理工学院 移动校园 - 核心逻辑脚本
    数据存储：Upstash Redis（云端）
-   下面按照功能模块分区，修改时只需找到对应区域
    ========================================== */
 
 // ──────────────────────────────────────────
-// 模块1：常量配置区（在这里改密码、数据库等）
+// 模块1：常量配置区
 // ──────────────────────────────────────────
 
-const CONTROL_PASSWORD = "5499";       // 控制台密码，修改这里的数字即可更换密码
+const CONTROL_PASSWORD = "5499";       // 控制台密码
 
-// ✅ 已配置你的 Upstash Redis 连接信息
+// ✅ Upstash Redis 连接信息
 const UPSTASH_URL = "https://social-escargot-66261.upstash.io";
 const UPSTASH_TOKEN = "gQAAAAAAAQLVAAIgcDJmYzU1YjliNjUwZTI0ZDZhYWY3ODhiZDlkYzRkNTk1ZA";
 
@@ -25,9 +24,7 @@ async function redis(command, ...args) {
     return data.result;
 }
 
-// 专业数据库（随机生成时从这里抽取）
-// 如果要增加新专业，照着格式加一行就行，例如：
-// { dept: "计算机学院", major: "软件工程", code: "08120" }
+// 专业数据库
 const jcMajorDatabase = [
     { dept: "经济与管理学院", major: "财务管理", code: "21102" },
     { dept: "经济与管理学院", major: "大数据与会计", code: "30502" },
@@ -41,14 +38,11 @@ const jcMajorDatabase = [
     { dept: "外国语学院", major: "外国语言文学", code: "10500" }
 ];
 
-// 随机姓名的"姓"库，可自行增删
 const firstNames = ["张", "李", "王", "刘", "陈", "杨", "赵", "黄", "周", "吴", "徐", "孙", "马", "胡", "郭", "林"];
-
-// 随机姓名的"名"库，可自行增删
 const lastNames = ["逸飞", "梦溪", "泽宇", "梓涵", "听风", "晓静", "嘉杰", "雨桐", "博远", "子墨", "瑞霖", "思源", "楚菁", "雪珂", "寒潞"];
 
 // ──────────────────────────────────────────
-// 模块2：全局状态（当前显示的校友信息）
+// 模块2：全局状态
 // ──────────────────────────────────────────
 let currentConfig = {
     cardId: "--------",
@@ -58,18 +52,14 @@ let currentConfig = {
     major: "--",
     gradYear: "--"
 };
-let currentUserId = "";                // 短ID（从URL参数中获取）
-let isCardDataValid = false;          // 当前链接是否对应一条真实存在的校友数据
+let currentUserId = "";
+let isCardDataValid = false;
 
 // ──────────────────────────────────────────
-// 模块3：拼音首字母算法（汉字→拼音首字母）
-// 如果想扩展更多汉字，在下面的 pinyinMap 对象里添加即可
+// 模块3：拼音首字母算法
 // ──────────────────────────────────────────
 function getChinesePinyinInitials(str) {
     if (!str) return "user";
-
-    // 汉字到拼音首字母的映射表，目前收录了常见姓氏和常用字
-    // 格式：'汉字': '首字母'
     const pinyinMap = {
         '阿':'a','啊':'a','爱':'a','安':'a','巴':'b','把':'b','白':'b','班':'b','包':'b',
         '擦':'c','才':'c','参':'c','藏':'c','曾':'c','陈':'c','程':'c','查':'c','楚':'c','初':'c',
@@ -84,7 +74,6 @@ function getChinesePinyinInitials(str) {
         '西':'x','夏':'x','肖':'x','谢':'x','许':'x','徐':'x','压':'y','杨':'y','叶':'y','于':'y','余':'y','易':'y',
         '匝':'z','张':'z','赵':'z','周':'z','郑':'z','朱':'z','左':'z'
     };
-
     let result = "";
     for (let char of str) {
         if (/[a-zA-Z]/.test(char)) {
@@ -99,7 +88,7 @@ function getChinesePinyinInitials(str) {
 }
 
 // ──────────────────────────────────────────
-// 模块4：设备唯一ID（用于绑定设备，防止多设备登录）
+// 模块4：设备唯一ID
 // ──────────────────────────────────────────
 function getOrCreateDeviceId() {
     const STORAGE_KEY = 'device_unique_id';
@@ -112,7 +101,7 @@ function getOrCreateDeviceId() {
 }
 
 // ──────────────────────────────────────────
-// 模块5：页面导航（切换首页/卡片页）
+// 模块5：页面导航
 // ──────────────────────────────────────────
 function forceGoToCardPage() {
     document.getElementById('page-home').style.display = 'none';
@@ -129,7 +118,7 @@ function navigateToHome() {
 }
 
 // ──────────────────────────────────────────
-// 模块6：设备锁（云端验证，通过 Upstash Redis）
+// 模块6：设备锁（云端验证）
 // ──────────────────────────────────────────
 async function tryNavigateToCard() {
     if (!isCardDataValid) {
@@ -146,8 +135,13 @@ async function tryNavigateToCard() {
     const deviceId = getOrCreateDeviceId();
 
     try {
-        // 从云端读取用户数据
-        const raw = await redis('GET', `user:${userId}`);
+        // 🔧 修复：确保 key 格式正确
+        const key = `user:${userId}`;
+        console.log('查询用户，key:', key);
+        
+        const raw = await redis('GET', key);
+        console.log('查询结果:', raw);
+        
         if (!raw) {
             alert('该校友卡不存在，请联系管理员。');
             return;
@@ -169,16 +163,16 @@ async function tryNavigateToCard() {
         if (confirm("【首次打开安全激活】\n系统检测到这是您第一次在当前设备上访问该专属链接。\n\n⚠️ 设备安全绑定机制：\n点击确认后，本校友卡将与当前设备永久绑定，防止他人转发劫持盗刷。确认进行绑定吗？")) {
             user.activated = true;
             user.deviceId = deviceId;
-            await redis('SET', `user:${userId}`, JSON.stringify(user));
+            await redis('SET', key, JSON.stringify(user));
             forceGoToCardPage();
         }
     } catch (e) {
-        console.error(e);
+        console.error('设备锁验证失败', e);
         alert('网络异常，无法验证设备身份，请稍后重试。');
     }
 }
 
-// 重置设备锁（云端解除绑定）
+// 重置设备锁
 async function resetDeviceLock() {
     const userId = (currentConfig.stuId && currentConfig.stuId !== "--") ? currentConfig.stuId : currentUserId;
     if (!userId || userId === "--") {
@@ -187,12 +181,13 @@ async function resetDeviceLock() {
     }
 
     try {
-        const raw = await redis('GET', `user:${userId}`);
+        const key = `user:${userId}`;
+        const raw = await redis('GET', key);
         if (raw) {
             const user = JSON.parse(raw);
             user.activated = false;
             user.deviceId = null;
-            await redis('SET', `user:${userId}`, JSON.stringify(user));
+            await redis('SET', key, JSON.stringify(user));
         }
         alert(`已成功解除用户 [${userId}] 的防转发设备锁！下次打开将自动重新建立首次绑定。`);
     } catch (e) {
@@ -206,7 +201,7 @@ async function resetDeviceLock() {
 }
 
 // ──────────────────────────────────────────
-// 模块7：数据渲染（把 currentConfig 里的数据更新到页面卡片上）
+// 模块7：数据渲染
 // ──────────────────────────────────────────
 function renderDomData() {
     document.getElementById('v-cardId').innerText = currentConfig.cardId;
@@ -227,13 +222,13 @@ function syncConfigToInputs() {
 }
 
 // ──────────────────────────────────────────
-// 模块8：URL参数解析（从 Upstash Redis 加载数据）
+// 模块8：URL参数解析（从 Upstash Redis 加载）
 // ──────────────────────────────────────────
 async function parseUrlParams() {
     const params = new URLSearchParams(window.location.search);
     isCardDataValid = false;
 
-    // 模式A：链接里直接携带完整信息
+    // 模式A：完整参数
     if (params.get('cardId') || params.get('name') || params.get('stuId')) {
         currentConfig.cardId = params.get('cardId') || currentConfig.cardId;
         currentConfig.name = params.get('name') || currentConfig.name;
@@ -247,12 +242,19 @@ async function parseUrlParams() {
         return;
     }
 
-    // 模式B：短 id → 从 Upstash Redis 加载
+    // 模式B：短 id
     const id = params.get('id');
     if (id) {
         currentUserId = id;
+        console.log('URL 中的 id:', id);
+        
         try {
-            const raw = await redis('GET', `user:${id}`);
+            const key = `user:${id}`;
+            console.log('从 Redis 查询，key:', key);
+            
+            const raw = await redis('GET', key);
+            console.log('Redis 返回:', raw);
+            
             if (raw) {
                 const u = JSON.parse(raw);
                 currentConfig = {
@@ -266,7 +268,9 @@ async function parseUrlParams() {
                 isCardDataValid = true;
                 renderDomData();
                 syncConfigToInputs();
+                console.log('校友数据加载成功');
             } else {
+                console.log('Redis 中没有找到该 key');
                 currentConfig = { cardId: "--------", name: "--", stuId: "--", department: "--", major: "--", gradYear: "--" };
                 renderDomData();
             }
@@ -300,7 +304,7 @@ function generateRandomStuId() {
     document.getElementById('i-cardId').value = `JCCUT${startYear}0${Math.floor(Math.random() * 80) + 10}`;
 }
 
-// 生成链接并自动保存到云端
+// 生成链接并保存到云端
 async function generateStandaloneUrl() {
     const cfg = {
         cardId: document.getElementById('i-cardId').value.trim(),
@@ -319,7 +323,10 @@ async function generateStandaloneUrl() {
     const initials = getChinesePinyinInitials(cfg.name);
     const lastTwoDigits = cfg.stuId.length >= 2 ? cfg.stuId.slice(-2) : "00";
     const computedId = initials + lastTwoDigits;
-    const standaloneUrl = window.location.origin + window.location.pathname + '?id=' + computedId;
+
+    // 🔧 修复：确保链接格式正确
+    const baseUrl = window.location.origin + window.location.pathname.replace(/\/$/, '');
+    const standaloneUrl = baseUrl + '?id=' + computedId;
 
     try {
         // 检查是否已存在
@@ -349,18 +356,17 @@ async function generateStandaloneUrl() {
         isCardDataValid = true;
         renderDomData();
 
-        // 复制链接
-        const clipboardText = `专属链接：\n${standaloneUrl}`;
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(clipboardText)
-                .then(() => alert(`🎉 生成成功！\n\n短ID：${computedId}\n链接已复制，数据已保存到云端。`))
-                .catch(() => prompt('复制以下链接：', standaloneUrl));
-        } else {
-            prompt('复制以下链接：', standaloneUrl);
+        // 🔧 修复：复制到剪贴板
+        try {
+            await navigator.clipboard.writeText(standaloneUrl);
+            alert(`🎉 生成成功！\n\n短ID：${computedId}\n链接已自动复制到剪贴板：\n${standaloneUrl}`);
+        } catch (clipErr) {
+            // 备用方案：显示链接让用户手动复制
+            prompt('请手动复制以下链接：', standaloneUrl);
         }
     } catch (e) {
         console.error(e);
-        alert('保存失败，请检查网络后重试。');
+        alert('保存失败，请检查网络后重试。\n\n错误信息：' + e.message);
     }
 }
 
@@ -408,7 +414,7 @@ function closePanel() {
 }
 
 // ──────────────────────────────────────────
-// 模块10：三指手势识别 + 密码验证
+// 模块10：三指手势 + 密码
 // ──────────────────────────────────────────
 document.getElementById('gestureArea').addEventListener('touchstart', (e) => {
     if (e.touches.length == 3) {
@@ -423,7 +429,7 @@ document.getElementById('gestureArea').addEventListener('touchstart', (e) => {
 });
 
 // ──────────────────────────────────────────
-// 模块11：北京时间实时时钟
+// 模块11：北京时间
 // ──────────────────────────────────────────
 function runClock() {
     const now = new Date();
@@ -438,7 +444,7 @@ function triggerManualRefresh() {
 }
 
 // ──────────────────────────────────────────
-// 模块12：页面启动
+// 模块12：启动
 // ──────────────────────────────────────────
 navigateToHome();
 parseUrlParams();
