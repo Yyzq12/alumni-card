@@ -1,6 +1,6 @@
 /* ==========================================
-   荆楚理工学院 移动校园 - 表格列表版
-   列表展示：表格化、每行带删除按钮、直观美观
+   荆楚理工学院 移动校园 - 最终版（无强制刷新按钮，自动刷新表格）
+   特性：控制台内嵌表格（含专业列），无操作限流，生成/删除后自动强制刷新
    ========================================== */
 
 'use strict';
@@ -79,11 +79,12 @@ function showConfirm(message, title = '提示') {
     });
 }
 
-// ------------------- 4. 配置 & Redis -------------------
+// ------------------- 4. 配置 & Redis（无限流版本）-------------------
 const CONTROL_PASSWORD = "5499";
 const UPSTASH_URL = "https://becoming-trout-101437.upstash.io";
 const UPSTASH_TOKEN = "gQAAAAAAAYw9AAIgcDE2ZjBmNDdkMTIyZTU0MzFlOGNhNTlkYzk1OWU1OTBjOA";
 
+// 控制台 HTML（移除了强制刷新按钮）
 const ADMIN_PANEL_HTML = `
     <div class="admin-panel" id="adminPanel" style="display: block;">
         <div class="admin-panel-header">
@@ -98,28 +99,16 @@ const ADMIN_PANEL_HTML = `
         <div class="form-group"><label>毕业年份</label><input type="text" id="i-gradYear" value="2020" inputmode="numeric"></div>
         <button class="random-badge-btn-block" onclick="window.random()">🎲 随机专业与学号(2016-2020)</button>
         <button class="panel-btn" style="background:#28a745;" onclick="window.generate()">🚀 生成并复制链接</button>
-        <button class="panel-btn" style="background:#17a2b8;" onclick="window.refreshAlumniList()">🔄 强制刷新列表</button>
-        <button class="panel-btn" style="background:#5bc0de;" onclick="window.list()">📋 查看所有校友</button>
-        <button class="panel-btn" style="background:#d9534f;" onclick="window.del()">🗑️ 删除校友</button>
         <button class="panel-btn" style="background:#ff9f43;" onclick="window.resetDeviceLock()">🔓 重置设备锁</button>
         <button class="panel-btn" style="background:#444;" onclick="window.closePanel()">关闭控制台</button>
-        <!-- 校友列表容器（动态填充） -->
-        <div id="alumni-table-container" style="margin-top:20px; max-height:400px; overflow-y:auto; border-top:1px solid #444; padding-top:10px;"></div>
+        
+        <div id="alumni-header" style="margin-top:20px; font-weight:bold; font-size:14px; color:#ffbcbc;">加载中...</div>
+        <div id="alumni-table-container" style="max-height:400px; overflow-y:auto; border-top:1px solid #444; margin-top:8px; padding-top:8px;"></div>
     </div>
 `;
 
-let lastWriteTime = 0;
-const MIN_WRITE_INTERVAL = 500;
-
+// 移除限流：不再检查写操作间隔
 async function redis(command, ...args) {
-    const writeCommands = ['SET', 'DEL', 'SADD', 'SREM'];
-    if (writeCommands.includes(command.toUpperCase())) {
-        const now = Date.now();
-        if (now - lastWriteTime < MIN_WRITE_INTERVAL) {
-            throw new Error('操作过于频繁，请稍后再试');
-        }
-        lastWriteTime = now;
-    }
     const url = `${UPSTASH_URL}/${command}/${args.join('/')}`;
     const resp = await fetch(url, {
         headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` }
@@ -288,7 +277,7 @@ async function tryNavigateToCard() {
             showCard();
             return;
         }
-        const ok = await showConfirm('点击"确定"后，此校友卡将与当前设备锁定绑定。', '欢迎使用校友卡');
+        const ok = await showConfirm('点击"确定"后，此校友卡将与当前设备绑定，他人将无法使用。', '欢迎使用校友卡');
         if (ok) {
             userData.activated = true;
             userData.deviceId = deviceId;
@@ -421,7 +410,6 @@ async function generate() {
             cardId, name, stuId, department, major, gradYear,
             activated: false, deviceId: null, createdAt: Date.now()
         }));
-        // 同时尝试更新索引集（不影响主流程）
         try {
             await redis('SADD', 'alumni:index', shortId);
         } catch (e) { /* 忽略 */ }
@@ -434,58 +422,114 @@ async function generate() {
         currentUserId = shortId;
         isCardDataValid = true;
         showToast(`生成成功！短ID：${shortId}`);
-        // 刷新校友列表
-        if (document.getElementById('adminPanel')) {
-            await list();
-        }
+        // 强制刷新表格（绕过缓存）
+        await loadAlumniTable(true);
     } catch (e) {
         console.error('生成保存失败', e);
         showToast(`保存失败：${e.message}`);
     }
 }
 
-// 校友列表缓存
+// ------------------- 校友表格相关函数（含专业列）-------------------
 const ALUMNI_CACHE_KEY = 'alumni_list_cache';
 const CACHE_TTL = 5 * 60 * 1000;
 
-// 在控制台内显示校友表格
-async function showAlumniTable(alumniList) {
+async function loadAlumniTable(forceRefresh = false) {
     const container = document.getElementById('alumni-table-container');
-    if (!container) return;
+    const headerDiv = document.getElementById('alumni-header');
+    if (!container || !headerDiv) return;
     
-    if (!alumniList || alumniList.length === 0) {
-        container.innerHTML = '<div style="text-align:center;padding:20px;color:#aaa;">暂无校友数据</div>';
-        return;
+    try {
+        let alumniList = null;
+        if (!forceRefresh) {
+            const cached = localStorage.getItem(ALUMNI_CACHE_KEY);
+            if (cached) {
+                const { data, timestamp } = JSON.parse(cached);
+                if (Date.now() - timestamp < CACHE_TTL) {
+                    alumniList = data;
+                }
+            }
+        }
+        
+        if (!alumniList) {
+            const allKeys = await redis('KEYS', 'user:*');
+            if (!allKeys || allKeys.length === 0) {
+                headerDiv.innerText = '共 0 位校友';
+                container.innerHTML = '<div style="text-align:center;padding:20px;color:#aaa;">暂无校友数据</div>';
+                return;
+            }
+            const ids = allKeys.map(key => key.replace('user:', ''));
+            const batchSize = 50;
+            let list = [];
+            for (let i = 0; i < ids.length; i += batchSize) {
+                const batchIds = ids.slice(i, i + batchSize);
+                const userKeys = batchIds.map(id => `user:${id}`);
+                const vals = await redis('MGET', ...userKeys);
+                for (let j = 0; j < batchIds.length; j++) {
+                    const u = JSON.parse(vals[j] || '{}');
+                    list.push({
+                        id: batchIds[j],
+                        name: u.name || '?',
+                        major: u.major || '—',
+                        activated: u.activated || false
+                    });
+                }
+            }
+            alumniList = list;
+            localStorage.setItem(ALUMNI_CACHE_KEY, JSON.stringify({ data: alumniList, timestamp: Date.now() }));
+        }
+        
+        headerDiv.innerText = `共 ${alumniList.length} 位校友`;
+        
+        if (alumniList.length === 0) {
+            container.innerHTML = '<div style="text-align:center;padding:20px;color:#aaa;">暂无校友数据</div>';
+            return;
+        }
+        
+        let html = `<table style="width:100%; border-collapse:collapse; color:#fff; font-size:13px;">
+            <thead>
+                <tr style="border-bottom:2px solid #555;">
+                    <th style="padding:8px 4px; text-align:left; width:5%;">状态</th>
+                    <th style="padding:8px 4px; text-align:left; width:15%;">姓名</th>
+                    <th style="padding:8px 4px; text-align:left; width:15%;">短ID</th>
+                    <th style="padding:8px 4px; text-align:left; width:45%;">专业</th>
+                    <th style="padding:8px 4px; text-align:center; width:20%;">操作</th>
+                </tr>
+            </thead>
+            <tbody>`;
+        for (const item of alumniList) {
+            const statusIcon = item.activated ? '🟢' : '🔴';
+            let displayName = item.name;
+            if (displayName.length === 2) displayName = displayName[0] + '　' + displayName[1];
+            html += `<tr style="border-bottom:1px solid #333;">
+                <td style="padding:6px 4px;">${statusIcon}</td>
+                <td style="padding:6px 4px;">${displayName}</td>
+                <td style="padding:6px 4px; font-family:monospace;">${item.id}</td>
+                <td style="padding:6px 4px;">${escapeHtml(item.major)}</td>
+                <td style="padding:6px 4px; text-align:center;">
+                    <button onclick="window.deleteAlumniById('${item.id}')" style="background:#d9534f; border:none; color:#fff; padding:2px 10px; border-radius:3px; cursor:pointer;">删除</button>
+                </td>
+            </tr>`;
+        }
+        html += `</tbody></table>`;
+        container.innerHTML = html;
+    } catch (e) {
+        console.error('加载校友表格失败', e);
+        headerDiv.innerText = '加载失败';
+        container.innerHTML = `<div style="text-align:center;padding:20px;color:#f66;">错误：${e.message}</div>`;
     }
-    
-    let html = `<table style="width:100%; border-collapse:collapse; color:#fff; font-size:13px;">
-        <thead>
-            <tr style="border-bottom:2px solid #555;">
-                <th style="padding:8px 4px; text-align:left;">状态</th>
-                <th style="padding:8px 4px; text-align:left;">姓名</th>
-                <th style="padding:8px 4px; text-align:left;">短ID</th>
-                <th style="padding:8px 4px; text-align:center;">操作</th>
-            </tr>
-        </thead>
-        <tbody>`;
-    for (const item of alumniList) {
-        const statusIcon = item.activated ? '🟢' : '🔴';
-        let displayName = item.name;
-        if (displayName.length === 2) displayName = displayName[0] + '　' + displayName[1];
-        html += `<tr style="border-bottom:1px solid #333;">
-            <td style="padding:6px 4px;">${statusIcon}</td>
-            <td style="padding:6px 4px;">${displayName}</td>
-            <td style="padding:6px 4px; font-family:monospace;">${item.id}</td>
-            <td style="padding:6px 4px; text-align:center;">
-                <button onclick="window.deleteAlumniById('${item.id}')" style="background:#d9534f; border:none; color:#fff; padding:2px 10px; border-radius:3px; cursor:pointer;">删除</button>
-            </td>
-        </tr>`;
-    }
-    html += `</tbody></table>`;
-    container.innerHTML = html;
 }
 
-// 删除校友（供表格按钮调用）
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
+}
+
 window.deleteAlumniById = async function(id) {
     const confirmed = await showConfirm(`确认删除校友 ${id} 吗？`, '警告');
     if (!confirmed) return;
@@ -494,102 +538,15 @@ window.deleteAlumniById = async function(id) {
         await redis('SREM', 'alumni:index', id);
         localStorage.removeItem(ALUMNI_CACHE_KEY);
         showToast(`${id} 已删除`);
-        // 刷新列表
-        await list();
+        await loadAlumniTable(true); // 强制刷新表格
     } catch (e) {
         showToast(`删除失败：${e.message}`);
     }
 };
 
-// 强制刷新列表
-window.refreshAlumniList = async function() {
-    await list(true);
-};
-
+// 保留 list 函数以兼容可能的外部调用
 async function list(forceRefresh = false) {
-    try {
-        if (!forceRefresh) {
-            const cached = localStorage.getItem(ALUMNI_CACHE_KEY);
-            if (cached) {
-                const { data, timestamp } = JSON.parse(cached);
-                if (Date.now() - timestamp < CACHE_TTL) {
-                    await showAlumniTable(data);
-                    return;
-                }
-            }
-        }
-        
-        showToast('正在加载校友列表...', 1000);
-        const allKeys = await redis('KEYS', 'user:*');
-        if (!allKeys || allKeys.length === 0) {
-            await showAlumniTable([]);
-            showToast('暂无校友数据');
-            return;
-        }
-        
-        const ids = allKeys.map(key => key.replace('user:', ''));
-        const batchSize = 50;
-        let alumniList = [];
-        for (let i = 0; i < ids.length; i += batchSize) {
-            const batchIds = ids.slice(i, i + batchSize);
-            const userKeys = batchIds.map(id => `user:${id}`);
-            const vals = await redis('MGET', ...userKeys);
-            for (let j = 0; j < batchIds.length; j++) {
-                const u = JSON.parse(vals[j] || '{}');
-                alumniList.push({
-                    id: batchIds[j],
-                    name: u.name || '?',
-                    activated: u.activated || false
-                });
-            }
-        }
-        
-        localStorage.setItem(ALUMNI_CACHE_KEY, JSON.stringify({
-            data: alumniList,
-            timestamp: Date.now()
-        }));
-        await showAlumniTable(alumniList);
-    } catch (e) {
-        console.error('列表加载失败', e);
-        showToast(`加载失败：${e.message}`);
-    }
-}
-
-async function del() {
-    const id = prompt('请输入要删除的校友短ID：');
-    if (!id) return;
-    const confirmed = await showConfirm(`确认删除 "${id}" ？不可恢复！`, '警告');
-    if (!confirmed) return;
-    try {
-        const exists = await redis('EXISTS', `user:${id}`);
-        if (exists === 0) {
-            showToast(`校友 "${id}" 不存在`);
-            return;
-        }
-        await redis('DEL', `user:${id}`);
-        await redis('SREM', 'alumni:index', id);
-        localStorage.removeItem(ALUMNI_CACHE_KEY);
-        showToast(`已删除`);
-        await list(); // 刷新表格
-    } catch (e) {
-        showToast(`删除失败：${e.message}`);
-    }
-}
-
-function closePanel() {
-    const panel = document.getElementById('adminPanel');
-    if (panel) panel.remove();
-    DOM.iCardId = DOM.iName = DOM.iStuId = DOM.iDepartment = DOM.iMajor = DOM.iGradYear = null;
-}
-
-function bindConsoleEvents() {
-    if (!DOM.iName) return;
-    DOM.iCardId.addEventListener('input', (e) => { reactiveConfig.cardId = e.target.value; });
-    DOM.iName.addEventListener('input', (e) => { reactiveConfig.name = e.target.value; });
-    DOM.iStuId.addEventListener('input', (e) => { reactiveConfig.stuId = e.target.value; });
-    DOM.iDepartment.addEventListener('input', (e) => { reactiveConfig.department = e.target.value; });
-    DOM.iMajor.addEventListener('input', (e) => { reactiveConfig.major = e.target.value; });
-    DOM.iGradYear.addEventListener('input', (e) => { reactiveConfig.gradYear = e.target.value; });
+    await loadAlumniTable(forceRefresh);
 }
 
 // ------------------- 12. 三指手势打开控制台 -------------------
@@ -609,13 +566,28 @@ if (gestureArea) {
                 DOM.iGradYear = document.getElementById('i-gradYear');
                 bindConsoleEvents();
                 updateUI();
-                // 自动加载校友列表
-                await list();
+                await loadAlumniTable();
             } else if (pwd !== null) {
                 showToast('密码错误');
             }
         }
     });
+}
+
+function bindConsoleEvents() {
+    if (!DOM.iName) return;
+    DOM.iCardId.addEventListener('input', (e) => { reactiveConfig.cardId = e.target.value; });
+    DOM.iName.addEventListener('input', (e) => { reactiveConfig.name = e.target.value; });
+    DOM.iStuId.addEventListener('input', (e) => { reactiveConfig.stuId = e.target.value; });
+    DOM.iDepartment.addEventListener('input', (e) => { reactiveConfig.department = e.target.value; });
+    DOM.iMajor.addEventListener('input', (e) => { reactiveConfig.major = e.target.value; });
+    DOM.iGradYear.addEventListener('input', (e) => { reactiveConfig.gradYear = e.target.value; });
+}
+
+function closePanel() {
+    const panel = document.getElementById('adminPanel');
+    if (panel) panel.remove();
+    DOM.iCardId = DOM.iName = DOM.iStuId = DOM.iDepartment = DOM.iMajor = DOM.iGradYear = null;
 }
 
 // ------------------- 13. 北京时间时钟 + 刷新按钮旋转 -------------------
@@ -646,6 +618,6 @@ window.triggerManualRefresh = triggerManualRefresh;
 window.random = random;
 window.generate = generate;
 window.list = list;
-window.del = del;
 window.resetDeviceLock = resetDeviceLock;
 window.closePanel = closePanel;
+window.deleteAlumniById = deleteAlumniById;
