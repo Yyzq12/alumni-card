@@ -1,6 +1,6 @@
 /* ==========================================
-   荆楚理工学院 移动校园 - 样式表（稳定版）
-   包含：骨架屏、刷新动画、自定义弹窗、修复手势区域
+   荆楚理工学院 移动校园 - 样式表 (最终极致版)
+   包含：骨架屏、刷新按钮旋转动画、自定义弹窗、修复手势区域
    ========================================== */
 
 :root {
@@ -56,7 +56,7 @@ body {
     display: flex;
     gap: 12px;
 }
-/* 三指手势区域 - 高度必须与 wx-nav 完全一致 */
+/* 三指手势区域（与导航栏高度一致，保证可触摸） */
 .admin-trigger {
     position: fixed;
     top: 0;
@@ -228,7 +228,7 @@ body {
     margin-top: 24px;
     font-weight: bold;
 }
-/* 控制台面板（动态注入） */
+/* 控制台动态面板样式（动态注入后使用） */
 .admin-panel {
     position: fixed;
     top: 0;
@@ -291,17 +291,19 @@ body {
 #alumni-header {
     text-align: center;
 }
-/* 自定义弹窗 */
+/* 自定义弹窗（Toast & Modal） */
 .custom-toast {
     position: fixed;
     bottom: 20%;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(0,0,0,0.8);
+    background: rgba(0,0,0,0.85);
     color: var(--white);
-    padding: 8px 16px;
-    border-radius: 24px;
+    padding: 10px 20px;
+    border-radius: 30px;
+    font-size: 14px;
     z-index: 100001;
+    white-space: nowrap;
     animation: fadeInUp 0.2s ease;
 }
 .custom-toast.fade-out {
@@ -334,6 +336,7 @@ body {
     border-radius: 12px;
     overflow: hidden;
     z-index: 100003;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
 }
 .custom-modal-header {
     background: var(--theme-red);
@@ -341,11 +344,14 @@ body {
     padding: 12px;
     text-align: center;
     font-weight: bold;
+    font-size: 16px;
 }
 .custom-modal-body {
     padding: 20px;
     text-align: center;
     color: #333;
+    font-size: 14px;
+    line-height: 1.4;
 }
 .custom-modal-footer {
     display: flex;
@@ -356,10 +362,21 @@ body {
     padding: 12px;
     border: none;
     background: var(--white);
+    font-size: 15px;
     cursor: pointer;
+    transition: background 0.2s;
 }
-.custom-modal-btn.cancel { color: #999; border-right: 1px solid #eee; }
-.custom-modal-btn.confirm { color: var(--theme-red); font-weight: bold; }
+.custom-modal-btn.cancel {
+    color: #999;
+    border-right: 1px solid #eee;
+}
+.custom-modal-btn.confirm {
+    color: var(--theme-red);
+    font-weight: bold;
+}
+.custom-modal-btn:active {
+    background: #f5f5f5;
+}
 /* 响应式 */
 @media (max-width: 374px) {
     .info-label, .info-value { font-size: 13px; }
