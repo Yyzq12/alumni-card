@@ -529,9 +529,9 @@ async function loadAlumniTable(forceRefresh = false) {
                     <th style="padding:8px 4px; text-align:left; width:10%;">状态</th>
                     <th style="padding:8px 4px; text-align:left; width:18%;">姓名</th>
                     <th style="padding:8px 4px; text-align:left; width:12%;">短ID</th>
-                    <th style="padding:8px 4px; text-align:left; width:34%;">专业</th>
-                    <th style="padding:8px 4px; text-align:center; width:13%;">链接</th>
-                    <th style="padding:8px 4px; text-align:center; width:13%;">删除</th>
+                    <th style="padding:8px 4px; text-align:left; width:30%;">专业</th>
+                    <th style="padding:8px 4px; text-align:center; width:15%;">链接</th>
+                    <th style="padding:8px 4px; text-align:center; width:15%;">删除</th>
                 </tr>
             </thead>
             <tbody>`;
