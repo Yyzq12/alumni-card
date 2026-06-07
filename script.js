@@ -1,5 +1,6 @@
 /* ==========================================
    荆楚理工学院 移动校园 - 核心逻辑脚本
+   数据存储：Upstash Redis（云端）
    下面按照功能模块分区，修改时只需找到对应区域
    ========================================== */
 
@@ -8,7 +9,21 @@
 // ──────────────────────────────────────────
 
 const CONTROL_PASSWORD = "5499";       // 控制台密码，修改这里的数字即可更换密码
-const DATA_URL = "users.json";         // 校友数据文件名，如果改名了记得同步修改
+
+// ✅ 已配置你的 Upstash Redis 连接信息
+const UPSTASH_URL = "https://social-escargot-66261.upstash.io";
+const UPSTASH_TOKEN = "gQAAAAAAAQLVAAIgcDJmYzU1YjliNjUwZTI0ZDZhYWY3ODhiZDlkYzRkNTk1ZA";
+
+// Upstash Redis 通用调用函数
+async function redis(command, ...args) {
+    const url = `${UPSTASH_URL}/${command}/${args.join('/')}`;
+    const resp = await fetch(url, {
+        headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` }
+    });
+    if (!resp.ok) throw new Error('Redis 请求失败: ' + resp.status);
+    const data = await resp.json();
+    return data.result;
+}
 
 // 专业数据库（随机生成时从这里抽取）
 // 如果要增加新专业，照着格式加一行就行，例如：
@@ -26,10 +41,10 @@ const jcMajorDatabase = [
     { dept: "外国语学院", major: "外国语言文学", code: "10500" }
 ];
 
-// 随机姓名的“姓”库，可自行增删
+// 随机姓名的"姓"库，可自行增删
 const firstNames = ["张", "李", "王", "刘", "陈", "杨", "赵", "黄", "周", "吴", "徐", "孙", "马", "胡", "郭", "林"];
 
-// 随机姓名的“名”库，可自行增删
+// 随机姓名的"名"库，可自行增删
 const lastNames = ["逸飞", "梦溪", "泽宇", "梓涵", "听风", "晓静", "嘉杰", "雨桐", "博远", "子墨", "瑞霖", "思源", "楚菁", "雪珂", "寒潞"];
 
 // ──────────────────────────────────────────
@@ -73,13 +88,10 @@ function getChinesePinyinInitials(str) {
     let result = "";
     for (let char of str) {
         if (/[a-zA-Z]/.test(char)) {
-            // 如果是英文字母，直接转小写
             result += char.toLowerCase();
         } else if (pinyinMap[char]) {
-            // 如果字典里有，取对应的首字母
             result += pinyinMap[char];
         } else {
-            // 字典里没有的汉字用 'x' 占位，可自行添加映射
             result += 'x';
         }
     }
@@ -88,13 +100,11 @@ function getChinesePinyinInitials(str) {
 
 // ──────────────────────────────────────────
 // 模块4：设备唯一ID（用于绑定设备，防止多设备登录）
-// 原理：第一次访问时生成一个随机码，存入浏览器本地存储，之后都读这个码
 // ──────────────────────────────────────────
 function getOrCreateDeviceId() {
-    const STORAGE_KEY = 'device_unique_id';   // 存储在浏览器里的键名
+    const STORAGE_KEY = 'device_unique_id';
     let deviceId = localStorage.getItem(STORAGE_KEY);
     if (!deviceId) {
-        // 生成一个随机ID：时间戳 + 随机字符串
         deviceId = 'DEV-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
         localStorage.setItem(STORAGE_KEY, deviceId);
     }
@@ -105,17 +115,13 @@ function getOrCreateDeviceId() {
 // 模块5：页面导航（切换首页/卡片页）
 // ──────────────────────────────────────────
 function forceGoToCardPage() {
-    // 隐藏首页，显示卡片页
     document.getElementById('page-home').style.display = 'none';
     document.getElementById('page-card').style.display = 'flex';
-    // 修改导航栏标题
     document.getElementById('nav-title').innerText = '校友卡';
-    // 显示返回按钮
     document.getElementById('nav-back-btn').style.visibility = 'visible';
 }
 
 function navigateToHome() {
-    // 隐藏卡片页，显示首页
     document.getElementById('page-card').style.display = 'none';
     document.getElementById('page-home').style.display = 'flex';
     document.getElementById('nav-title').innerText = '首页';
@@ -123,17 +129,14 @@ function navigateToHome() {
 }
 
 // ──────────────────────────────────────────
-// 模块6：设备锁（核心安全逻辑）
-// 点击首页热区时调用，验证设备是否有权查看卡片
+// 模块6：设备锁（云端验证，通过 Upstash Redis）
 // ──────────────────────────────────────────
 async function tryNavigateToCard() {
-    // 第一步：检查当前链接是否真的对应一个校友
     if (!isCardDataValid) {
         alert('此链接无效或校友信息未被收录，无法查看电子卡片。');
         return;
     }
 
-    // 第二步：获取当前用户的唯一标识（学号优先，其次是短ID）
     const userId = (currentConfig.stuId && currentConfig.stuId !== "--") ? currentConfig.stuId : currentUserId;
     if (!userId || userId === "--") {
         alert('系统错误：未检测到有效用户标识。');
@@ -141,40 +144,64 @@ async function tryNavigateToCard() {
     }
 
     const deviceId = getOrCreateDeviceId();
-    const key = `lock_device_${userId}`;   // 存储锁的键名，如 lock_device_2016211020208
 
-    // 第三步：检查是否首次激活
-    if (!localStorage.getItem(key)) {
-        // 从未激活过，弹窗让用户确认绑定
-        if (confirm("【首次打开安全激活】\n系统检测到这是您第一次在当前设备上访问该专属链接。\n\n⚠️ 设备安全绑定机制：\n点击确认后，本校友卡将与当前设备物理绑定，防止他人转发劫持盗刷。确认进行绑定吗？")) {
-            localStorage.setItem(key, deviceId);    // 记录当前设备ID
-            forceGoToCardPage();                   // 进入卡片页
+    try {
+        // 从云端读取用户数据
+        const raw = await redis('GET', `user:${userId}`);
+        if (!raw) {
+            alert('该校友卡不存在，请联系管理员。');
+            return;
         }
-        // 如果用户点了取消，什么也不做，留在首页
-    } else if (localStorage.getItem(key) === deviceId) {
-        // 设备ID匹配，已经绑定过，直接进入
-        forceGoToCardPage();
-    } else {
-        // 设备ID不匹配，说明是其他设备，拒绝访问
-        alert('安全警告：检测到当前设备环境与绑定的安全设备不一致。为保障账户安全，已限制该设备访问卡片。');
+
+        const user = JSON.parse(raw);
+
+        // 已激活
+        if (user.activated) {
+            if (user.deviceId !== deviceId) {
+                alert('安全警告：该校友卡已绑定其他设备，当前设备无法访问。');
+                return;
+            }
+            forceGoToCardPage();
+            return;
+        }
+
+        // 未激活，询问首次绑定
+        if (confirm("【首次打开安全激活】\n系统检测到这是您第一次在当前设备上访问该专属链接。\n\n⚠️ 设备安全绑定机制：\n点击确认后，本校友卡将与当前设备永久绑定，防止他人转发劫持盗刷。确认进行绑定吗？")) {
+            user.activated = true;
+            user.deviceId = deviceId;
+            await redis('SET', `user:${userId}`, JSON.stringify(user));
+            forceGoToCardPage();
+        }
+    } catch (e) {
+        console.error(e);
+        alert('网络异常，无法验证设备身份，请稍后重试。');
     }
 }
 
-// 重置设备锁（管理员在控制台使用）
-function resetDeviceLock() {
+// 重置设备锁（云端解除绑定）
+async function resetDeviceLock() {
     const userId = (currentConfig.stuId && currentConfig.stuId !== "--") ? currentConfig.stuId : currentUserId;
     if (!userId || userId === "--") {
         alert('未检测到有效卡片绑定用户，无需重置。');
         return;
     }
-    // 删除锁记录
-    localStorage.removeItem(`lock_device_${userId}`);
-    alert(`已成功解除用户 [${userId}] 的防转发设备锁！下次打开将自动重新建立首次绑定。`);
-    // 如果正在卡片页，返回首页
+
+    try {
+        const raw = await redis('GET', `user:${userId}`);
+        if (raw) {
+            const user = JSON.parse(raw);
+            user.activated = false;
+            user.deviceId = null;
+            await redis('SET', `user:${userId}`, JSON.stringify(user));
+        }
+        alert(`已成功解除用户 [${userId}] 的防转发设备锁！下次打开将自动重新建立首次绑定。`);
+    } catch (e) {
+        alert('重置失败，请稍后重试。');
+    }
+
     if (document.getElementById('page-card').style.display === 'flex') {
         navigateToHome();
     }
-    // 关闭控制台
     document.getElementById('adminPanel').classList.remove('active');
 }
 
@@ -190,7 +217,6 @@ function renderDomData() {
     document.getElementById('v-gradYear').innerText = currentConfig.gradYear;
 }
 
-// 把 currentConfig 同步到控制台的输入框里（打开控制台时用）
 function syncConfigToInputs() {
     document.getElementById('i-cardId').value = currentConfig.cardId === "--------" ? "" : currentConfig.cardId;
     document.getElementById('i-name').value = currentConfig.name === "--" ? "" : currentConfig.name;
@@ -201,14 +227,13 @@ function syncConfigToInputs() {
 }
 
 // ──────────────────────────────────────────
-// 模块8：URL参数解析（读取链接里的 ?id=xxx 或完整参数）
-// 这是页面加载时最先执行的逻辑之一
+// 模块8：URL参数解析（从 Upstash Redis 加载数据）
 // ──────────────────────────────────────────
-function parseUrlParams() {
+async function parseUrlParams() {
     const params = new URLSearchParams(window.location.search);
-    isCardDataValid = false;   // 先假设无效
+    isCardDataValid = false;
 
-    // 模式A：链接里直接携带完整信息（例如 ?cardId=xxx&name=唐海林&stuId=...）
+    // 模式A：链接里直接携带完整信息
     if (params.get('cardId') || params.get('name') || params.get('stuId')) {
         currentConfig.cardId = params.get('cardId') || currentConfig.cardId;
         currentConfig.name = params.get('name') || currentConfig.name;
@@ -216,83 +241,67 @@ function parseUrlParams() {
         currentConfig.department = params.get('department') || currentConfig.department;
         currentConfig.major = params.get('major') || currentConfig.major;
         currentConfig.gradYear = params.get('gradYear') || currentConfig.gradYear;
-        isCardDataValid = true;   // 直接标记有效
+        isCardDataValid = true;
         renderDomData();
         syncConfigToInputs();
         return;
     }
 
-    // 模式B：只有短 id（例如 ?id=thl08），需要从 users.json 里查找对应数据
+    // 模式B：短 id → 从 Upstash Redis 加载
     const id = params.get('id');
     if (id) {
         currentUserId = id;
-        // 从服务器加载 users.json（加上时间戳避免缓存）
-        fetch(DATA_URL + '?t=' + Date.now())
-            .then(r => r.json())
-            .then(data => {
-                if (data && data[id]) {
-                    // 找到了对应数据，填充到 currentConfig
-                    const u = data[id];
-                    currentConfig = {
-                        cardId: u.cardId || "JCCUT000000",
-                        name: u.name || "未命名",
-                        stuId: u.stuId || "未设定",
-                        department: u.department || "未设定",
-                        major: u.major || "未设定",
-                        gradYear: u.gradYear || "2020"
-                    };
-                    isCardDataValid = true;
-                    renderDomData();
-                    syncConfigToInputs();
-                } else {
-                    // 没找到，重置为占位符，保持无效状态
-                    currentConfig = { cardId: "--------", name: "--", stuId: "--", department: "--", major: "--", gradYear: "--" };
-                    renderDomData();
-                }
-            })
-            .catch(() => {
-                // 网络错误或文件不存在，也重置
+        try {
+            const raw = await redis('GET', `user:${id}`);
+            if (raw) {
+                const u = JSON.parse(raw);
+                currentConfig = {
+                    cardId: u.cardId || "JCCUT000000",
+                    name: u.name || "未命名",
+                    stuId: u.stuId || "未设定",
+                    department: u.department || "未设定",
+                    major: u.major || "未设定",
+                    gradYear: u.gradYear || "2020"
+                };
+                isCardDataValid = true;
+                renderDomData();
+                syncConfigToInputs();
+            } else {
                 currentConfig = { cardId: "--------", name: "--", stuId: "--", department: "--", major: "--", gradYear: "--" };
                 renderDomData();
-            });
+            }
+        } catch (e) {
+            console.error('加载失败', e);
+            currentConfig = { cardId: "--------", name: "--", stuId: "--", department: "--", major: "--", gradYear: "--" };
+            renderDomData();
+        }
     }
 }
 
 // ──────────────────────────────────────────
-// 模块9：控制台功能（随机生成、生成链接等）
+// 模块9：控制台功能
 // ──────────────────────────────────────────
 
-// 随机生成一组完整的校友数据，并填入控制台表单
+// 随机生成
 function generateRandomStuId() {
-    // 随机入学年份（2016-2020）
     const startYear = Math.floor(Math.random() * (2020 - 2016 + 1)) + 2016;
-    // 随机选择一个专业
     const randomMajorMeta = jcMajorDatabase[Math.floor(Math.random() * jcMajorDatabase.length)];
-    // 随机班级号（01-03）
     const classNum = String(Math.floor(Math.random() * 3) + 1).padStart(2, '0');
-    // 随机座位号（01-40）
     const seatNum = String(Math.floor(Math.random() * 40) + 1).padStart(2, '0');
-    
-    // 拼接学号：年份 + 专业代码 + 班级 + 座位号
     const finalStuId = `${startYear}${randomMajorMeta.code}${classNum}${seatNum}`;
-    // 毕业年份 = 入学年份 + 4
     const gradYear = startYear + 4;
-    // 随机姓名
     const randomName = firstNames[Math.floor(Math.random() * firstNames.length)] + lastNames[Math.floor(Math.random() * lastNames.length)];
 
-    // 填入表单
     document.getElementById('i-stuId').value = finalStuId;
     document.getElementById('i-name').value = randomName;
     document.getElementById('i-department').value = randomMajorMeta.dept;
     document.getElementById('i-major').value = randomMajorMeta.major;
     document.getElementById('i-gradYear').value = gradYear;
-    // 随机生成一个卡号
     document.getElementById('i-cardId').value = `JCCUT${startYear}0${Math.floor(Math.random() * 80) + 10}`;
 }
 
-// 生成独立链接 + JSON 代码，复制到剪贴板
-function generateStandaloneUrl() {
-    // 读取表单里的值
+// 生成链接并自动保存到云端
+async function generateStandaloneUrl() {
     const cfg = {
         cardId: document.getElementById('i-cardId').value.trim(),
         name: document.getElementById('i-name').value.trim(),
@@ -302,63 +311,112 @@ function generateStandaloneUrl() {
         gradYear: document.getElementById('i-gradYear').value.trim()
     };
 
-    // 简单校验：姓名和学号不能为空
     if (!cfg.name || !cfg.stuId) {
-        alert('数据校验错误：姓名和学号不能为空！');
+        alert('姓名和学号不能为空！');
         return;
     }
 
-    // 计算短ID：拼音缩写 + 学号后两位
     const initials = getChinesePinyinInitials(cfg.name);
     const lastTwoDigits = cfg.stuId.length >= 2 ? cfg.stuId.slice(-2) : "00";
     const computedId = initials + lastTwoDigits;
-
-    // 构建短链接
     const standaloneUrl = window.location.origin + window.location.pathname + '?id=' + computedId;
 
-    // 构建可直接粘贴到 users.json 的代码段
-    const jsonTemplate = `"${computedId}": {\n    "name": "${cfg.name}",\n    "stuId": "${cfg.stuId}",\n    "cardId": "${cfg.cardId}",\n    "department": "${cfg.department}",\n    "major": "${cfg.major}",\n    "gradYear": "${cfg.gradYear}"\n  }`;
+    try {
+        // 检查是否已存在
+        const exists = await redis('EXISTS', `user:${computedId}`);
+        if (exists) {
+            alert(`短ID "${computedId}" 已存在，请更换姓名或学号后重试。`);
+            return;
+        }
 
-    // 合并成要复制的内容
-    const clipboardText = `专属独立链接：\n${standaloneUrl}\n\n---------------------------\n可直接追加粘贴到 users.json 的免排版代码：\n\n  ${jsonTemplate},`;
+        // 保存到云端
+        const user = {
+            name: cfg.name,
+            stuId: cfg.stuId,
+            cardId: cfg.cardId,
+            department: cfg.department,
+            major: cfg.major,
+            gradYear: cfg.gradYear,
+            activated: false,
+            deviceId: null,
+            createdAt: Date.now()
+        };
+        await redis('SET', `user:${computedId}`, JSON.stringify(user));
 
-    // 复制到剪贴板
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(clipboardText).then(() => {
-            alert(`🎉 生成成功！\n\n1. 短ID已计算为：${computedId}\n2. 链接及 JSON 代码已复制到剪贴板。\n请先将 JSON 粘贴到 users.json，再手动访问短链接。`);
-            // 更新当前预览
-            currentConfig = cfg;
-            isCardDataValid = true;
-            renderDomData();
-        }).catch(() => {
-            // 复制失败时的备用方案
-            prompt('自动复制失败，请手动复制以下内容：', clipboardText);
-        });
-    } else {
-        prompt('请手动复制以下内容：', clipboardText);
+        // 更新本地预览
+        currentConfig = cfg;
+        currentUserId = computedId;
+        isCardDataValid = true;
+        renderDomData();
+
+        // 复制链接
+        const clipboardText = `专属链接：\n${standaloneUrl}`;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(clipboardText)
+                .then(() => alert(`🎉 生成成功！\n\n短ID：${computedId}\n链接已复制，数据已保存到云端。`))
+                .catch(() => prompt('复制以下链接：', standaloneUrl));
+        } else {
+            prompt('复制以下链接：', standaloneUrl);
+        }
+    } catch (e) {
+        console.error(e);
+        alert('保存失败，请检查网络后重试。');
     }
 }
 
-// 关闭控制台
+// 查看所有校友
+async function listAlumni() {
+    try {
+        const keys = await redis('KEYS', 'user:*');
+        if (!keys || keys.length === 0) {
+            alert('当前没有任何校友数据。');
+            return;
+        }
+        const values = await redis('MGET', ...keys);
+        let text = `共 ${keys.length} 位校友：\n\n`;
+        keys.forEach((key, i) => {
+            const u = JSON.parse(values[i] || '{}');
+            text += `${i + 1}. ${u.name} (${u.stuId})\n   短ID: ${key.replace('user:', '')} | ${u.department} ${u.major}\n   ${u.gradYear}届 | ${u.activated ? '已激活' : '未激活'}\n\n`;
+        });
+        alert(text);
+    } catch (e) {
+        alert('获取列表失败，请稍后重试。');
+    }
+}
+
+// 删除校友
+async function deleteAlumni() {
+    const id = prompt('请输入要删除的校友短ID（例如 thl08）：');
+    if (!id) return;
+    if (!confirm(`⚠️ 确认删除校友 "${id}" 吗？此操作不可恢复！`)) return;
+
+    try {
+        const exists = await redis('EXISTS', `user:${id}`);
+        if (!exists) {
+            alert(`校友 "${id}" 不存在。`);
+            return;
+        }
+        await redis('DEL', `user:${id}`);
+        alert(`校友 "${id}" 已成功删除。`);
+    } catch (e) {
+        alert('删除失败，请稍后重试。');
+    }
+}
+
 function closePanel() {
     document.getElementById('adminPanel').classList.remove('active');
 }
 
 // ──────────────────────────────────────────
 // 模块10：三指手势识别 + 密码验证
-// 监听页面顶部的触摸事件
 // ──────────────────────────────────────────
 document.getElementById('gestureArea').addEventListener('touchstart', (e) => {
-    // 判断是否为三指同时触摸
     if (e.touches.length == 3) {
-        // 弹出密码输入框
         const pwd = prompt('请输入控制台密码：');
         if (pwd === CONTROL_PASSWORD) {
-            // 密码正确，打开控制台
             document.getElementById('adminPanel').classList.add('active');
-            syncConfigToInputs();   // 把当前卡片数据同步到表单
+            syncConfigToInputs();
         } else if (pwd !== null) {
-            // 密码错误（null 表示用户点了取消）
             alert('密码错误，无法打开控制台');
         }
     }
@@ -366,29 +424,23 @@ document.getElementById('gestureArea').addEventListener('touchstart', (e) => {
 
 // ──────────────────────────────────────────
 // 模块11：北京时间实时时钟
-// 页面底部的时间栏，每秒钟更新一次
 // ──────────────────────────────────────────
 function runClock() {
     const now = new Date();
-    // 转换为 UTC 毫秒数
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    // 北京时间 = UTC + 8小时
     const bj = new Date(utc + (3600000 * 8));
-    // 拼接显示字符串
     document.getElementById('live-clock-bar').innerText =
         `当前时间：${bj.getFullYear()}年${String(bj.getMonth()+1).padStart(2,'0')}月${String(bj.getDate()).padStart(2,'0')}日 ${String(bj.getHours()).padStart(2,'0')}:${String(bj.getMinutes()).padStart(2,'0')}:${String(bj.getSeconds()).padStart(2,'0')}`;
 }
 
-// 手动刷新时间（用户点击“刷新”时调用）
 function triggerManualRefresh() {
     runClock();
 }
 
 // ──────────────────────────────────────────
 // 模块12：页面启动
-// 以下代码在页面加载完成后自动执行
 // ──────────────────────────────────────────
-navigateToHome();           // 默认显示首页
-parseUrlParams();           // 解析 URL 中的参数（如果有）
-runClock();                 // 立即显示时间
-setInterval(runClock, 1000); // 每 1000 毫秒（1秒）刷新一次时钟
+navigateToHome();
+parseUrlParams();
+runClock();
+setInterval(runClock, 1000);
