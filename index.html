@@ -24,7 +24,7 @@
         #page-home { width: 100%; display: flex; flex-direction: column; position: relative; background: #FFF; min-height: calc(100vh - 48px - env(safe-area-inset-top, 44px)); padding-bottom: 80px; }
         .home-mock-bg { width: 100%; display: block; object-fit: contain; }
         .hotspot-alumni-card { position: absolute; top: 35%; left: 25%; width: 20%; height: 15%; cursor: pointer; z-index: 50; -webkit-tap-highlight-color: transparent; }
-        #page-card { width: 100%; display: none; flex-direction: column; align-items: center; } 
+        #page-card { width: 100%; display: none; flex-direction: column; align-items: center; }
         .alumni-card { width: calc(100% - 24px); height: 220px; background-color: #BD262A; background-image: url('card-bg.png'); background-size: 100% 100%; background-repeat: no-repeat; border-radius: 12px; overflow: hidden; margin-top: 14px; box-shadow: 0 4px 14px rgba(0,0,0,0.08); position: relative; }
         .card-top-area { position: relative; width: 100%; height: calc(100% - 38px); }
         .card-serial { position: absolute; top: 16px; right: 20px; font-size: 13px; font-family: "Courier New", Courier, monospace; font-weight: bold; color: rgba(255, 255, 255, 0.9); letter-spacing: 0.5px; }
@@ -47,20 +47,28 @@
         .form-group input { width: 100%; height: 38px; border: none; border-radius: 4px; padding: 0 10px; font-size: 14px; color: #333; outline: none; }
         .panel-btn { width: 100%; height: 44px; background: #C9262B; color: #fff; border: none; border-radius: 4px; margin-top: 10px; font-weight: bold; font-size: 14px; cursor: pointer; }
         .random-badge-btn-block { width: 100%; height: 44px; background: #5C1315; color: #fff; border: 1px solid #C9262B; border-radius: 4px; margin-top: 15px; font-weight: bold; font-size: 14px; cursor: pointer; }
+        .help-doc-box { background: rgba(255, 255, 255, 0.08); border: 1px dashed rgba(255, 255, 255, 0.2); padding: 14px; border-radius: 6px; margin-top: 20px; font-size: 12.5px; line-height: 1.6; color: #e0e0e0; }
+        .help-doc-box h4 { color: #ff9f43; margin-bottom: 8px; font-size: 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 4px; font-weight: bold; }
+        .help-doc-box ul, .help-doc-box ol { padding-left: 18px; margin-bottom: 12px; }
+        .help-doc-box li { margin-bottom: 4px; }
+        .code-mark { font-family: monospace; background: rgba(0,0,0,0.4); padding: 1px 4px; border-radius: 3px; color: #28a745; margin: 0 2px; }
     </style>
 </head>
 <body>
     <div class="admin-trigger" id="gestureArea"></div>
+    
     <div class="wx-container">
         <div class="wx-nav">
             <span id="nav-back-btn" onclick="navigateToHome()" style="cursor:pointer; visibility: hidden;">〈 首页</span>
             <span id="nav-title">首页</span>
             <div class="wx-capsule"><span>•••</span> <span>●</span></div>
         </div>
+        
         <div id="page-home">
             <img class="home-mock-bg" src="home-bg.png" alt="小程序首页">
             <div class="hotspot-alumni-card" onclick="tryNavigateToCard()"></div>
         </div>
+        
         <div id="page-card">
             <div class="alumni-card">
                 <div class="card-top-area">
@@ -84,26 +92,43 @@
         </div>
     </div>
 
-    <!-- 控制台面板（已融合第二份代码的全部功能） -->
+    <!-- 控制台面板 -->
     <div class="admin-panel" id="adminPanel">
         <div class="admin-panel-header">
             <h3 style="color:#C9262B; font-size:18px;">荆楚理工学院控制台</h3>
         </div>
+        
         <div style="background: rgba(199, 38, 43, 0.15); border: 1px solid #C9262B; padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 11px; color: #ffbcbc; line-height: 1.5;">
             <strong>⚠️ 技术演示与娱乐免责提示：</strong><br>
             本项目属于纯前端视觉技术原型，仅供技术交流与娱乐演示。严禁用于任何形式的伪造欺骗或其它违反国家法律的非法用途。使用者自身承担全部责任。
         </div>
+        
         <div class="form-group"><label>右上角卡号</label><input type="text" id="i-cardId" value="JCCUT20160892"></div>
-        <div class="form-group"><label>姓名</label><input type="text" id="i-name" value="唐海林"></div>
-        <div class="form-group"><label>学号</label><input type="text" id="i-stuId" value="2016211020208"></div>
+        <div class="form-group"><label>姓名（自动计算拼音缩写并生成短ID）</label><input type="text" id="i-name" value="唐海林"></div>
+        <div class="form-group"><label>学号（卡片展示完整学号，短ID取最后两位）</label><input type="text" id="i-stuId" value="2016211020208"></div>
         <div class="form-group"><label>院系</label><input type="text" id="i-department" value="经济与管理学院"></div>
         <div class="form-group"><label>专业</label><input type="text" id="i-major" value="财务管理"></div>
         <div class="form-group"><label>毕业年份</label><input type="text" id="i-gradYear" value="2020"></div>
         
         <button class="random-badge-btn-block" onclick="generateRandomStuId()">🎲 随机专业与学号(2016-2020)</button>
-        <button class="panel-btn" style="background:#28a745;" onclick="generateStandaloneUrl()">🚀 生成并复制该用户的专属独立链接</button>
-        <button class="panel-btn" style="background:#ff9f43;" onclick="resetDeviceLock()">🔓 重置设备锁</button>
+        <button class="panel-btn" style="background:#28a745; color:#fff;" onclick="generateStandaloneUrl()">🚀 生成并复制专属链接与JSON</button>
+        <button class="panel-btn" style="background:#ff9f43; color:#fff;" onclick="resetDeviceLock()">🔓 重置当前用户的设备锁</button>
         <button class="panel-btn" style="background:#444;" onclick="closePanel()">关闭控制台</button>
+
+        <div class="help-doc-box">
+            <h4>📖 使用指南</h4>
+            <ol>
+                <li>填写或随机生成校友信息，点击 <strong>“生成并复制”</strong>。</li>
+                <li>复制成功后，在电脑端打开 <span class="code-mark">users.json</span>，将剪贴板中的 JSON 代码粘贴进去。</li>
+                <li>用生成的短链接（<span class="code-mark">?id=xxx</span>）即可访问该校友的电子卡片。</li>
+            </ol>
+            <h4>🔍 短ID计算规则</h4>
+            <ul>
+                <li><strong>公式：</strong> 姓名拼音首字母缩写 + 学号最后两位。</li>
+                <li>示例：唐海林 → <span class="code-mark">thl</span>，学号尾号 <span class="code-mark">08</span> → 最终短ID：<span class="code-mark">thl08</span></li>
+                <li>卡片上依然显示完整的原始学号，不影响美观。</li>
+            </ul>
+        </div>
     </div>
 
     <script>
@@ -116,17 +141,17 @@
             major: "--",
             gradYear: "--"
         };
-        let currentUserId = "";   // 兼容旧版users.json时的id
+        let currentUserId = "";
 
-        // ========== 专业数据库（真实院系） ==========
+        // ========== 院系及随机姓名数据库 ==========
         const jcMajorDatabase = [
             { dept: "经济与管理学院", major: "财务管理", code: "21102" },
             { dept: "经济与管理学院", major: "大数据与会计", code: "30502" },
             { dept: "医学部", major: "口腔医学（专升本）", code: "21102" },
             { dept: "师范学院", major: "小学教育", code: "40850" },
-            { dept: "新能源学院", major: "印刷工程（专升本）", code: "2420101" }, 
-            { dept: "食品与生物学院", major: "植物科学与技术（专升本）", code: "2420703" }, 
-            { dept: "食品与生物学院", major: "食品科学与工程", code: "2424407" }, 
+            { dept: "新能源学院", major: "印刷工程（专升本）", code: "2420101" },
+            { dept: "食品与生物学院", major: "植物科学与技术（专升本）", code: "2420703" },
+            { dept: "食品与生物学院", major: "食品科学与工程", code: "2424407" },
             { dept: "数理学院", major: "数学与应用数学", code: "09500" },
             { dept: "艺术学院", major: "环境设计", code: "12050" },
             { dept: "外国语学院", major: "外国语言文学", code: "10500" }
@@ -134,8 +159,60 @@
         const firstNames = ["张", "李", "王", "刘", "陈", "杨", "赵", "黄", "周", "吴", "徐", "孙", "马", "胡", "郭", "林"];
         const lastNames = ["逸飞", "梦溪", "泽宇", "梓涵", "听风", "晓静", "嘉杰", "雨桐", "博远", "子墨", "瑞霖", "思源", "楚菁", "雪珂", "海林"];
 
-        // ========== 设备指纹 ==========
-        function getDeviceFingerprint() { return 'DEV-' + Math.abs(window.screen.width * window.screen.height); }
+        // ========== 改进的拼音首字母算法（兼容常见多音字） ==========
+        function getChinesePinyinInitials(str) {
+            if (!str) return "user";
+            // 更完整的拼音首字母映射表（覆盖常用汉字）
+            const pinyinMap = {
+                '阿': 'a', '啊': 'a', '爱': 'a', '安': 'a', '暗': 'a',
+                '巴': 'b', '把': 'b', '白': 'b', '班': 'b', '包': 'b',
+                '擦': 'c', '才': 'c', '参': 'c', '藏': 'c', '曾': 'c',
+                '陈': 'c', '程': 'c', '查': 'c', '楚': 'c', '初': 'c',
+                '大': 'd', '代': 'd', '单': 'd', '邓': 'd', '丁': 'd',
+                '俄': 'e', '恩': 'e', '儿': 'e',
+                '发': 'f', '范': 'f', '方': 'f', '冯': 'f', '风': 'f',
+                '高': 'g', '郭': 'g', '关': 'g', '谷': 'g', '古': 'g',
+                '哈': 'h', '海': 'h', '韩': 'h', '何': 'h', '胡': 'h', '黄': 'h',
+                '贾': 'j', '江': 'j', '金': 'j', '景': 'j', '季': 'j',
+                '卡': 'k', '康': 'k', '孔': 'k', '寇': 'k', '匡': 'k',
+                '拉': 'l', '李': 'l', '林': 'l', '刘': 'l', '罗': 'l', '龙': 'l',
+                '马': 'm', '孟': 'm', '米': 'm', '苗': 'm', '莫': 'm',
+                '拿': 'n', '南': 'n', '宁': 'n', '牛': 'n', '年': 'n',
+                '欧': 'o', '欧阳': 'o',
+                '潘': 'p', '彭': 'p', '皮': 'p', '朴': 'p', '平': 'p',
+                '钱': 'q', '秦': 'q', '邱': 'q', '屈': 'q', '权': 'q',
+                '任': 'r', '阮': 'r', '饶': 'r', '容': 'r', '荣': 'r',
+                '撒': 's', '孙': 's', '宋': 's', '苏': 's', '沈': 's', '石': 's',
+                '他': 't', '唐': 't', '田': 't', '佟': 't', '涂': 't',
+                '王': 'w', '吴': 'w', '万': 'w', '魏': 'w', '文': 'w',
+                '西': 'x', '夏': 'x', '肖': 'x', '谢': 'x', '许': 'x', '徐': 'x',
+                '压': 'y', '杨': 'y', '叶': 'y', '于': 'y', '余': 'y', '易': 'y',
+                '匝': 'z', '张': 'z', '赵': 'z', '周': 'z', '郑': 'z', '朱': 'z', '左': 'z'
+            };
+            let result = "";
+            for (let char of str) {
+                if (/[a-zA-Z]/.test(char)) {
+                    result += char.toLowerCase();
+                } else if (pinyinMap[char]) {
+                    result += pinyinMap[char];
+                } else {
+                    // 未收录的汉字用 x 占位（实际可扩展）
+                    result += 'x';
+                }
+            }
+            return result || "uid";
+        }
+
+        // ========== 设备唯一ID（替代屏幕指纹，防止同型号设备碰撞） ==========
+        function getOrCreateDeviceId() {
+            const STORAGE_KEY = 'device_unique_id';
+            let deviceId = localStorage.getItem(STORAGE_KEY);
+            if (!deviceId) {
+                deviceId = 'DEV-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem(STORAGE_KEY, deviceId);
+            }
+            return deviceId;
+        }
 
         // ========== 页面导航 ==========
         function forceGoToCardPage() {
@@ -151,38 +228,41 @@
             document.getElementById('nav-back-btn').style.visibility = 'hidden';
         }
 
-        // ========== 设备锁核心 ==========
+        // ========== 设备锁核心（基于随机设备ID） ==========
         function tryNavigateToCard() {
-            // 使用学号作为唯一标识（优先使用currentConfig.stuId，如果没有则用旧版currentUserId）
             const userId = (currentConfig.stuId && currentConfig.stuId !== "--") ? currentConfig.stuId : currentUserId;
             if (!userId || userId === "--") {
-                alert('未识别到用户身份，无法验证设备。');
+                alert('系统提示：未检测到您的校友卡档案激活记录，无法查看电子卡片。');
                 return;
             }
-            const key = `lock_${userId}`;
+            const key = `lock_device_${userId}`;
+            const currentDeviceId = getOrCreateDeviceId();
+
             if (!localStorage.getItem(key)) {
-                if(confirm("【首次激活提示】\n检测到您是第一次在当前设备访问。\n\n⚠️ 重要说明：\n本链接已与您的当前设备自动绑定，今后仅允许在本台设备上打开。请确认是否继续？")) {
-                    localStorage.setItem(key, getDeviceFingerprint());
+                if(confirm("【首次打开安全激活】\n系统检测到这是您第一次在当前设备上访问该专属链接。\n\n⚠️ 设备安全绑定机制：\n点击确认后，本校友卡将与当前设备物理绑定，防止他人转发劫持盗刷。确认进行绑定吗？")) {
+                    localStorage.setItem(key, currentDeviceId);
                     forceGoToCardPage();
                 }
-            } else if (localStorage.getItem(key) === getDeviceFingerprint()) {
+            } else if (localStorage.getItem(key) === currentDeviceId) {
                 forceGoToCardPage();
             } else {
-                alert('【安全警告】\n该校友卡已绑定其他设备，当前设备无法访问。');
+                alert('安全警告：检测到当前设备环境与绑定的安全设备不一致。为保障账户安全，已限制该设备访问卡片。');
             }
         }
 
         function resetDeviceLock() {
             const userId = (currentConfig.stuId && currentConfig.stuId !== "--") ? currentConfig.stuId : currentUserId;
-            if (!userId) {
-                alert('未找到当前用户，无法重置。');
+            if (!userId || userId === "--") {
+                alert('未检测到有效卡片绑定用户，无需重置。');
                 return;
             }
-            localStorage.removeItem(`lock_${userId}`);
-            alert('已重置当前用户的设备锁，请重新从首页进入。');
+            localStorage.removeItem(`lock_device_${userId}`);
+            alert(`已成功解除用户 [${userId}] 的防转发设备锁！下次打开将自动重新建立首次绑定。`);
+            // 返回首页并保留当前控制台数据
             if (document.getElementById('page-card').style.display === 'flex') {
                 navigateToHome();
             }
+            document.getElementById('adminPanel').classList.remove('active');
         }
 
         // ========== 数据渲染 ==========
@@ -203,11 +283,11 @@
             document.getElementById('i-gradYear').value = currentConfig.gradYear === "--" ? "" : currentConfig.gradYear;
         }
 
-        // ========== URL参数解析（兼容独立链接 + users.json） ==========
+        // ========== URL参数解析 ==========
         function parseUrlParams() {
             const params = new URLSearchParams(window.location.search);
             
-            // 情况1：URL直接携带完整卡片参数（独立链接） -> 仅更新数据，不自动跳转，需手动点首页热区（触发设备锁）
+            // 模式A：独立链接携带完整参数
             if (params.get('cardId') || params.get('name') || params.get('stuId')) {
                 currentConfig.cardId = params.get('cardId') || currentConfig.cardId;
                 currentConfig.name = params.get('name') || currentConfig.name;
@@ -220,39 +300,29 @@
                 return;
             }
 
-            // 情况2：只有id参数，从users.json加载（旧版逻辑）
+            // 模式B：短id从users.json加载
             const id = params.get('id');
             if (id) {
                 currentUserId = id;
                 fetch('users.json?t=' + Date.now())
                     .then(r => r.json())
                     .then(data => {
-                        if (data[id]) {
+                        if (data && data[id]) {
                             const u = data[id];
                             currentConfig = {
-                                cardId: u.cardId,
-                                name: u.name,
-                                stuId: u.stuId,
-                                department: u.department,
-                                major: u.major,
-                                gradYear: u.gradYear
+                                cardId: u.cardId || "JCCUT000000",
+                                name: u.name || "未命名",
+                                stuId: u.stuId || "未设定",
+                                department: u.department || "未设定",
+                                major: u.major || "未设定",
+                                gradYear: u.gradYear || "2020"
                             };
                             renderDomData();
                             syncConfigToInputs();
                         }
                     })
-                    .catch(() => console.log('users.json 加载失败，可忽略'));
+                    .catch(() => console.log('users.json 加载失败'));
             }
-        }
-
-        // ========== 时钟 ==========
-        function runClock() {
-            const d = new Date();
-            document.getElementById('live-clock-bar').innerText = 
-                `当前时间：${d.getFullYear()}年${String(d.getMonth()+1).padStart(2,'0')}月${String(d.getDate()).padStart(2,'0')}日 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
-        }
-        function triggerManualRefresh() {
-            runClock();
         }
 
         // ========== 控制台功能 ==========
@@ -261,6 +331,7 @@
             const randomMajorMeta = jcMajorDatabase[Math.floor(Math.random() * jcMajorDatabase.length)];
             const classNum = String(Math.floor(Math.random() * 3) + 1).padStart(2, '0');
             const seatNum = String(Math.floor(Math.random() * 40) + 1).padStart(2, '0');
+            
             const finalStuId = `${startYear}${randomMajorMeta.code}${classNum}${seatNum}`;
             const gradYear = startYear + 4;
             const randomName = firstNames[Math.floor(Math.random() * firstNames.length)] + lastNames[Math.floor(Math.random() * lastNames.length)];
@@ -274,34 +345,53 @@
         }
 
         function generateStandaloneUrl() {
-            // 读取输入框内容作为最新配置
             const cfg = {
-                cardId: document.getElementById('i-cardId').value,
-                name: document.getElementById('i-name').value,
-                stuId: document.getElementById('i-stuId').value,
-                department: document.getElementById('i-department').value,
-                major: document.getElementById('i-major').value,
-                gradYear: document.getElementById('i-gradYear').value
+                cardId: document.getElementById('i-cardId').value.trim(),
+                name: document.getElementById('i-name').value.trim(),
+                stuId: document.getElementById('i-stuId').value.trim(),
+                department: document.getElementById('i-department').value.trim(),
+                major: document.getElementById('i-major').value.trim(),
+                gradYear: document.getElementById('i-gradYear').value.trim()
             };
-            // 更新全局配置并渲染
-            currentConfig = cfg;
-            renderDomData();
-            // 构建URL
-            const baseUrl = window.location.origin + window.location.pathname;
-            const params = new URLSearchParams(cfg);
-            const fullUrl = baseUrl + '?' + params.toString();
-            // 复制到剪贴板
+
+            if (!cfg.name || !cfg.stuId) {
+                alert('数据校验错误：姓名和学号不能为空！');
+                return;
+            }
+
+            // 计算短ID
+            const initials = getChinesePinyinInitials(cfg.name);
+            const lastTwoDigits = cfg.stuId.length >= 2 ? cfg.stuId.slice(-2) : "00";
+            const computedId = initials + lastTwoDigits;
+
+            // 构建独立短链接
+            const standaloneUrl = window.location.origin + window.location.pathname + '?id=' + computedId;
+
+            // 构建可直接粘贴到 users.json 的 JSON 片段
+            const jsonTemplate = `"${computedId}": {
+    "name": "${cfg.name}",
+    "stuId": "${cfg.stuId}",
+    "cardId": "${cfg.cardId}",
+    "department": "${cfg.department}",
+    "major": "${cfg.major}",
+    "gradYear": "${cfg.gradYear}"
+  }`;
+
+            const clipboardText = `专属独立链接：\n${standaloneUrl}\n\n---------------------------\n可直接追加粘贴到 users.json 的免排版代码：\n\n  ${jsonTemplate},`;
+
+            // 复制并提示，但不自动跳转（避免 users.json 未更新导致卡片无法显示）
             if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(fullUrl).then(() => {
-                    alert('✅ 专属独立链接已复制！\n\n该链接绑定当前设备，首次打开需激活。');
+                navigator.clipboard.writeText(clipboardText).then(() => {
+                    alert(`🎉 生成成功！\n\n1. 短ID已计算为：${computedId}\n2. 链接及 JSON 代码已复制到剪贴板。\n\n请先将 JSON 粘贴到 users.json，再手动访问短链接。`);
+                    // 更新当前预览数据但不跳转
+                    currentConfig = cfg;
+                    renderDomData();
                 }).catch(() => {
-                    prompt('手动复制以下链接：', fullUrl);
+                    prompt('自动复制失败，请手动复制以下内容：', clipboardText);
                 });
             } else {
-                prompt('手动复制以下链接：', fullUrl);
+                prompt('请手动复制以下内容：', clipboardText);
             }
-            // 跳转到卡片页（但注意：再次从首页进入仍需设备锁验证）
-            forceGoToCardPage();
         }
 
         function closePanel() {
@@ -312,13 +402,24 @@
         document.getElementById('gestureArea').addEventListener('touchstart', (e) => {
             if (e.touches.length == 3) {
                 document.getElementById('adminPanel').classList.add('active');
-                syncConfigToInputs();  // 打开时自动同步当前卡片数据
+                syncConfigToInputs();
             }
         });
 
-        // ========== 初始化 ==========
+        // ========== 时钟（北京时间） ==========
+        function runClock() {
+            const d = new Date();
+            const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+            const bj = new Date(utc + (3600000 * 8));
+            document.getElementById('live-clock-bar').innerText =
+                `当前时间：${bj.getFullYear()}年${String(bj.getMonth()+1).padStart(2,'0')}月${String(bj.getDate()).padStart(2,'0')}日 ${String(bj.getHours()).padStart(2,'0')}:${String(bj.getMinutes()).padStart(2,'0')}:${String(bj.getSeconds()).padStart(2,'0')}`;
+        }
+        function triggerManualRefresh() { runClock(); }
+
+        // ========== 启动 ==========
         navigateToHome();
         parseUrlParams();
+        runClock();
         setInterval(runClock, 1000);
     </script>
 </body>
