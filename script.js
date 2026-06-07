@@ -3,23 +3,32 @@
    数据存储：Upstash Redis（云端）
    ========================================== */
 
-// ──────────────────────────────────────────
-// 模块1：常量配置区
-// ──────────────────────────────────────────
-
-const CONTROL_PASSWORD = "5499";       // 控制台密码
+const CONTROL_PASSWORD = "5499";
 
 const UPSTASH_URL = "https://social-escargot-66261.upstash.io";
 const UPSTASH_TOKEN = "gQAAAAAAAQLVAAIgcDJmYzU1YjliNjUwZTI0ZDZhYWY3ODhiZDlkYzRkNTk1ZA";
 
+// 🔧 修复：优化 Redis 调用函数
 async function redis(command, ...args) {
     const url = `${UPSTASH_URL}/${command}/${args.join('/')}`;
-    const resp = await fetch(url, {
-        headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` }
-    });
-    if (!resp.ok) throw new Error('Redis 请求失败: ' + resp.status);
-    const data = await resp.json();
-    return data.result;
+    try {
+        const resp = await fetch(url, {
+            method: 'GET',
+            headers: { 
+                'Authorization': `Bearer ${UPSTASH_TOKEN}`,
+                'Accept': 'application/json'
+            }
+        });
+        if (!resp.ok) {
+            console.error('Redis 请求失败:', resp.status, await resp.text());
+            throw new Error('Redis 请求失败: ' + resp.status);
+        }
+        const data = await resp.json();
+        return data.result;
+    } catch (e) {
+        console.error('Redis 调用异常:', e);
+        throw e;
+    }
 }
 
 const jcMajorDatabase = [
@@ -38,9 +47,6 @@ const jcMajorDatabase = [
 const firstNames = ["张", "李", "王", "刘", "陈", "杨", "赵", "黄", "周", "吴", "徐", "孙", "马", "胡", "郭", "林"];
 const lastNames = ["逸飞", "梦溪", "泽宇", "梓涵", "听风", "晓静", "嘉杰", "雨桐", "博远", "子墨", "瑞霖", "思源", "楚菁", "雪珂", "寒潞"];
 
-// ──────────────────────────────────────────
-// 模块2：全局状态
-// ──────────────────────────────────────────
 let currentConfig = {
     cardId: "--------",
     name: "--",
@@ -52,9 +58,6 @@ let currentConfig = {
 let currentUserId = "";
 let isCardDataValid = false;
 
-// ──────────────────────────────────────────
-// 模块3：拼音算法
-// ──────────────────────────────────────────
 function getChinesePinyinInitials(str) {
     if (!str) return "user";
     const pinyinMap = {
@@ -84,9 +87,6 @@ function getChinesePinyinInitials(str) {
     return result || "uid";
 }
 
-// ──────────────────────────────────────────
-// 模块4：设备ID
-// ──────────────────────────────────────────
 function getOrCreateDeviceId() {
     const STORAGE_KEY = 'device_unique_id';
     let deviceId = localStorage.getItem(STORAGE_KEY);
@@ -97,9 +97,6 @@ function getOrCreateDeviceId() {
     return deviceId;
 }
 
-// ──────────────────────────────────────────
-// 模块5：页面导航
-// ──────────────────────────────────────────
 function forceGoToCardPage() {
     document.getElementById('page-home').style.display = 'none';
     document.getElementById('page-card').style.display = 'flex';
@@ -114,12 +111,9 @@ function navigateToHome() {
     document.getElementById('nav-back-btn').style.visibility = 'hidden';
 }
 
-// ──────────────────────────────────────────
-// 模块6：设备锁
-// ──────────────────────────────────────────
 async function tryNavigateToCard() {
     if (!isCardDataValid) {
-        alert('⚠️ 此链接无效或校友信息未被收录，无法查看电子卡片。\n\n请确认链接是否正确，或联系管理员获取新链接。');
+        alert('⚠️ 此链接无效或校友信息未被收录。\n\n请确认链接是否正确，或联系管理员。');
         return;
     }
 
@@ -135,7 +129,7 @@ async function tryNavigateToCard() {
         const raw = await redis('GET', `user:${userId}`);
         
         if (!raw) {
-            alert('❌ 该校友卡不存在。\n\n可能原因：\n1. 链接已失效\n2. 该校友信息已被删除\n\n请联系管理员确认。');
+            alert('该校友卡不存在，请联系管理员。');
             return;
         }
 
@@ -143,14 +137,14 @@ async function tryNavigateToCard() {
 
         if (user.activated) {
             if (user.deviceId !== deviceId) {
-                alert('🔒 安全警告：该校友卡已绑定其他设备，当前设备无法访问。');
+                alert('🔒 该校友卡已绑定其他设备，当前设备无法访问。');
                 return;
             }
             forceGoToCardPage();
             return;
         }
 
-        if (confirm("【首次激活】\n该校友卡尚未绑定设备。\n\n点击确认后，本卡将与当前设备永久绑定。\n绑定后他人无法再用此链接访问。\n\n确认进行绑定吗？")) {
+        if (confirm("【首次激活】\n该校友卡尚未绑定设备。\n\n确认后将与当前设备永久绑定。\n确认进行绑定吗？")) {
             user.activated = true;
             user.deviceId = deviceId;
             await redis('SET', `user:${userId}`, JSON.stringify(user));
@@ -158,14 +152,14 @@ async function tryNavigateToCard() {
         }
     } catch (e) {
         console.error(e);
-        alert('网络异常，无法验证设备身份，请稍后重试。');
+        alert('网络异常，无法验证设备身份。');
     }
 }
 
 async function resetDeviceLock() {
     const userId = (currentConfig.stuId && currentConfig.stuId !== "--") ? currentConfig.stuId : currentUserId;
     if (!userId || userId === "--") {
-        alert('未检测到有效卡片绑定用户，无需重置。');
+        alert('未检测到有效卡片绑定用户。');
         return;
     }
 
@@ -177,7 +171,7 @@ async function resetDeviceLock() {
             user.deviceId = null;
             await redis('SET', `user:${userId}`, JSON.stringify(user));
         }
-        alert(`✅ 已成功解除用户 [${userId}] 的设备锁！`);
+        alert(`已解除用户 [${userId}] 的设备锁！`);
     } catch (e) {
         alert('重置失败，请稍后重试。');
     }
@@ -188,9 +182,6 @@ async function resetDeviceLock() {
     document.getElementById('adminPanel').classList.remove('active');
 }
 
-// ──────────────────────────────────────────
-// 模块7：数据渲染
-// ──────────────────────────────────────────
 function renderDomData() {
     document.getElementById('v-cardId').innerText = currentConfig.cardId;
     document.getElementById('v-name').innerText = currentConfig.name;
@@ -209,21 +200,11 @@ function syncConfigToInputs() {
     document.getElementById('i-gradYear').value = currentConfig.gradYear === "--" ? "" : currentConfig.gradYear;
 }
 
-// ──────────────────────────────────────────
-// 模块8：URL参数解析
-// ──────────────────────────────────────────
 async function parseUrlParams() {
     const params = new URLSearchParams(window.location.search);
     isCardDataValid = false;
 
-    // 获取id参数
     const id = params.get('id');
-    
-    // 调试模式：显示当前id值
-    if (params.get('debug') === '1') {
-        alert('当前URL中的id参数：' + id);
-    }
-
     if (!id) return;
 
     currentUserId = id;
@@ -231,7 +212,7 @@ async function parseUrlParams() {
 
     try {
         const raw = await redis('GET', `user:${id}`);
-        console.log('Redis返回数据:', raw);
+        console.log('Redis 返回:', raw);
 
         if (raw) {
             const u = JSON.parse(raw);
@@ -246,10 +227,9 @@ async function parseUrlParams() {
             isCardDataValid = true;
             renderDomData();
             syncConfigToInputs();
-            console.log('✅ 校友数据加载成功:', currentConfig.name);
+            console.log('✅ 加载成功:', currentConfig.name);
         } else {
-            console.warn('⚠️ Redis中未找到该key:', `user:${id}`);
-            // 重置显示
+            console.warn('⚠️ 未找到:', id);
             currentConfig = { cardId: "--------", name: "--", stuId: "--", department: "--", major: "--", gradYear: "--" };
             renderDomData();
         }
@@ -259,10 +239,6 @@ async function parseUrlParams() {
         renderDomData();
     }
 }
-
-// ──────────────────────────────────────────
-// 模块9：控制台功能
-// ──────────────────────────────────────────
 
 function generateRandomStuId() {
     const startYear = Math.floor(Math.random() * (2020 - 2016 + 1)) + 2016;
@@ -300,7 +276,6 @@ async function generateStandaloneUrl() {
     const lastTwoDigits = cfg.stuId.length >= 2 ? cfg.stuId.slice(-2) : "00";
     const computedId = initials + lastTwoDigits;
 
-    // 构建链接（去掉末尾斜杠）
     let baseUrl = window.location.origin + window.location.pathname;
     baseUrl = baseUrl.replace(/\/$/, '');
     const standaloneUrl = `${baseUrl}?id=${computedId}`;
@@ -308,7 +283,7 @@ async function generateStandaloneUrl() {
     try {
         const exists = await redis('EXISTS', `user:${computedId}`);
         if (exists) {
-            alert(`短ID "${computedId}" 已存在，请更换姓名或学号后重试。`);
+            alert(`短ID "${computedId}" 已存在。`);
             return;
         }
 
@@ -330,12 +305,11 @@ async function generateStandaloneUrl() {
         isCardDataValid = true;
         renderDomData();
 
-        // 复制链接
         try {
             await navigator.clipboard.writeText(standaloneUrl);
-            alert(`🎉 生成成功！\n\n短ID：${computedId}\n链接已自动复制到剪贴板。`);
+            alert(`🎉 生成成功！\n\n短ID：${computedId}\n链接已自动复制。`);
         } catch (clipErr) {
-            alert(`🎉 生成成功！\n\n短ID：${computedId}\n\n请手动复制以下链接：\n${standaloneUrl}`);
+            alert(`🎉 生成成功！\n\n短ID：${computedId}\n\n请手动复制：\n${standaloneUrl}`);
         }
     } catch (e) {
         console.error(e);
@@ -363,9 +337,9 @@ async function listAlumni() {
 }
 
 async function deleteAlumni() {
-    const id = prompt('请输入要删除的校友短ID（例如 thl08）：');
+    const id = prompt('请输入要删除的校友短ID：');
     if (!id) return;
-    if (!confirm(`⚠️ 确认删除校友 "${id}" 吗？此操作不可恢复！`)) return;
+    if (!confirm(`确认删除校友 "${id}" 吗？此操作不可恢复！`)) return;
 
     try {
         const exists = await redis('EXISTS', `user:${id}`);
@@ -374,7 +348,7 @@ async function deleteAlumni() {
             return;
         }
         await redis('DEL', `user:${id}`);
-        alert(`✅ 校友 "${id}" 已成功删除。`);
+        alert(`校友 "${id}" 已删除。`);
     } catch (e) {
         alert('删除失败：' + e.message);
     }
@@ -384,9 +358,6 @@ function closePanel() {
     document.getElementById('adminPanel').classList.remove('active');
 }
 
-// ──────────────────────────────────────────
-// 模块10：三指手势 + 密码
-// ──────────────────────────────────────────
 document.getElementById('gestureArea').addEventListener('touchstart', (e) => {
     if (e.touches.length == 3) {
         const pwd = prompt('请输入控制台密码：');
@@ -399,9 +370,6 @@ document.getElementById('gestureArea').addEventListener('touchstart', (e) => {
     }
 });
 
-// ──────────────────────────────────────────
-// 模块11：北京时间
-// ──────────────────────────────────────────
 function runClock() {
     const now = new Date();
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
@@ -412,9 +380,6 @@ function runClock() {
 
 function triggerManualRefresh() { runClock(); }
 
-// ──────────────────────────────────────────
-// 模块12：启动
-// ──────────────────────────────────────────
 navigateToHome();
 parseUrlParams();
 runClock();
