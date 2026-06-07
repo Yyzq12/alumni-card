@@ -142,7 +142,7 @@
             gradYear: "--"
         };
         let currentUserId = "";
-        let isCardDataValid = false;   // ✅ 新增：标识当前id是否真实存在于users.json中
+        let isCardDataValid = false;
 
         // ========== 院系及随机姓名数据库 ==========
         const jcMajorDatabase = [
@@ -212,11 +212,10 @@
             document.getElementById('nav-back-btn').style.visibility = 'hidden';
         }
 
-        // ========== 设备锁核心（强制校验 isCardDataValid） ==========
+        // ========== 设备锁核心 ==========
         async function tryNavigateToCard() {
-            // ✅ 首要判断：当前链接是否加载到了真实的校友数据
             if (!isCardDataValid) {
-                alert('校友信息未被收录，无法查看校友卡。');
+                alert('此链接无效或校友信息未被收录，无法查看电子卡片。');
                 return;
             }
 
@@ -227,11 +226,9 @@
             }
 
             const deviceId = getOrCreateDeviceId();
-
-            // 本地设备锁（可选，若未接后端则只靠本地）
             const key = `lock_device_${userId}`;
             if (!localStorage.getItem(key)) {
-                if (confirm("【首次打开安全激活】\n系统检测到这是您第一次在当前设备上访问该专属链接。\n\n⚠️ 设备安全绑定机制：\n点击确认后，本校友卡将与当前设备物理绑定，他人无法使用。确认进行绑定吗？")) {
+                if (confirm("【首次打开安全激活】\n系统检测到这是您第一次在当前设备上访问该专属链接。\n\n⚠️ 设备安全绑定机制：\n点击确认后，本校友卡将与当前设备物理绑定，防止他人转发劫持盗刷。确认进行绑定吗？")) {
                     localStorage.setItem(key, deviceId);
                     forceGoToCardPage();
                 }
@@ -277,9 +274,9 @@
         // ========== URL参数解析 ==========
         function parseUrlParams() {
             const params = new URLSearchParams(window.location.search);
-            isCardDataValid = false;   // 重置有效性标志
+            isCardDataValid = false;
 
-            // 模式A：独立链接携带完整参数 -> 直接视为有效
+            // 模式A：独立链接携带完整参数
             if (params.get('cardId') || params.get('name') || params.get('stuId')) {
                 currentConfig.cardId = params.get('cardId') || currentConfig.cardId;
                 currentConfig.name = params.get('name') || currentConfig.name;
@@ -287,7 +284,7 @@
                 currentConfig.department = params.get('department') || currentConfig.department;
                 currentConfig.major = params.get('major') || currentConfig.major;
                 currentConfig.gradYear = params.get('gradYear') || currentConfig.gradYear;
-                isCardDataValid = true;   // 完整参数直接标记有效
+                isCardDataValid = true;
                 renderDomData();
                 syncConfigToInputs();
                 return;
@@ -310,17 +307,15 @@
                                 major: u.major || "未设定",
                                 gradYear: u.gradYear || "2020"
                             };
-                            isCardDataValid = true;   // ✅ 只有找到匹配数据才标记有效
+                            isCardDataValid = true;
                             renderDomData();
                             syncConfigToInputs();
                         } else {
-                            // ❌ 未找到匹配id，保持无效状态
                             currentConfig = { cardId: "--------", name: "--", stuId: "--", department: "--", major: "--", gradYear: "--" };
                             renderDomData();
                         }
                     })
                     .catch(() => {
-                        // 加载失败也视为无效
                         currentConfig = { cardId: "--------", name: "--", stuId: "--", department: "--", major: "--", gradYear: "--" };
                         renderDomData();
                     });
@@ -368,7 +363,7 @@
                 navigator.clipboard.writeText(clipboardText).then(() => {
                     alert(`🎉 生成成功！\n\n1. 短ID已计算为：${computedId}\n2. 链接及 JSON 代码已复制到剪贴板。\n请先将 JSON 粘贴到 users.json，再手动访问短链接。`);
                     currentConfig = cfg;
-                    isCardDataValid = true;   // 控制台生成时临时标记有效，方便预览
+                    isCardDataValid = true;
                     renderDomData();
                 }).catch(() => { prompt('自动复制失败，请手动复制以下内容：', clipboardText); });
             } else {
@@ -378,19 +373,26 @@
 
         function closePanel() { document.getElementById('adminPanel').classList.remove('active'); }
 
-        // ========== 三指手势 ==========
+        // ========== 三指手势 + 密码验证 ==========
         document.getElementById('gestureArea').addEventListener('touchstart', (e) => {
             if (e.touches.length == 3) {
-                document.getElementById('adminPanel').classList.add('active');
-                syncConfigToInputs();
+                const pwd = prompt('请输入控制台密码：');
+                if (pwd === '5499') {
+                    document.getElementById('adminPanel').classList.add('active');
+                    syncConfigToInputs();
+                } else if (pwd !== null) {
+                    alert('密码错误，无法打开控制台');
+                }
             }
         });
 
-        // ========== 时钟 ==========
+        // ========== 时钟（北京时间） ==========
         function runClock() {
-            const d = new Date();
+            const now = new Date();
+            const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+            const bj = new Date(utc + (3600000 * 8));
             document.getElementById('live-clock-bar').innerText =
-                `当前时间：${d.getFullYear()}年${String(d.getMonth()+1).padStart(2,'0')}月${String(d.getDate()).padStart(2,'0')}日 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+                `当前时间：${bj.getFullYear()}年${String(bj.getMonth()+1).padStart(2,'0')}月${String(bj.getDate()).padStart(2,'0')}日 ${String(bj.getHours()).padStart(2,'0')}:${String(bj.getMinutes()).padStart(2,'0')}:${String(bj.getSeconds()).padStart(2,'0')}`;
         }
         function triggerManualRefresh() { runClock(); }
 
