@@ -1,45 +1,130 @@
 /* ==========================================
-   荆楚理工学院 移动校园 - 核心逻辑脚本
-   数据存储：Upstash Redis（云端）
-   功能：校友卡管理、设备锁、控制台增删查
-   更新时间：2026年
+   荆楚理工学院 移动校园 - 最终极致版（含响应式数据绑定）
+   特性：Proxy 自动更新 UI、骨架屏、旋转动画、Canvas指纹、动态控制台
    ========================================== */
 
-// ╔══════════════════════════════════════════╗
-// ║  模块 1：配置区（需要修改时只改这里）      ║
-// ╚══════════════════════════════════════════╝
+'use strict';
 
-// 控制台密码（三指触摸后输入此密码才能进入管理面板）
-// 修改方法：把 "5499" 改成你自己的4位数字密码即可
+// ------------------- 1. DOM 节点缓存 -------------------
+const DOM = {
+    pageHome: document.getElementById('page-home'),
+    pageCard: document.getElementById('page-card'),
+    navTitle: document.getElementById('nav-title'),
+    navBackBtn: document.getElementById('nav-back-btn'),
+    vCardId: document.getElementById('v-cardId'),
+    vName: document.getElementById('v-name'),
+    vStuId: document.getElementById('v-stuId'),
+    vDepartment: document.getElementById('v-department'),
+    vMajor: document.getElementById('v-major'),
+    vGradYear: document.getElementById('v-gradYear'),
+    liveClockBar: document.getElementById('live-clock-bar'),
+    // 控制台元素（动态注入后赋值）
+    iCardId: null,
+    iName: null,
+    iStuId: null,
+    iDepartment: null,
+    iMajor: null,
+    iGradYear: null,
+    adminPanel: null
+};
+
+// ------------------- 2. 骨架屏控制 -------------------
+function showSkeleton(show) {
+    const skeletonElements = [DOM.vName, DOM.vStuId, DOM.vDepartment, DOM.vMajor, DOM.vGradYear];
+    skeletonElements.forEach(el => {
+        if (el) {
+            if (show) el.classList.add('skeleton');
+            else el.classList.remove('skeleton');
+        }
+    });
+}
+
+// ------------------- 3. 自定义弹窗 -------------------
+function showToast(message, duration = 2000) {
+    const toast = document.createElement('div');
+    toast.className = 'custom-toast';
+    toast.innerText = message;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.classList.add('fade-out');
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+}
+
+function showConfirm(message, title = '提示') {
+    return new Promise((resolve) => {
+        const modal = document.createElement('div');
+        modal.className = 'custom-modal';
+        modal.innerHTML = `
+            <div class="custom-modal-mask"></div>
+            <div class="custom-modal-container">
+                <div class="custom-modal-header">${title}</div>
+                <div class="custom-modal-body">${message}</div>
+                <div class="custom-modal-footer">
+                    <button class="custom-modal-btn cancel">取消</button>
+                    <button class="custom-modal-btn confirm">确定</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        const confirmBtn = modal.querySelector('.confirm');
+        const cancelBtn = modal.querySelector('.cancel');
+        const mask = modal.querySelector('.custom-modal-mask');
+        const close = (result) => {
+            modal.remove();
+            resolve(result);
+        };
+        confirmBtn.onclick = () => close(true);
+        cancelBtn.onclick = () => close(false);
+        mask.onclick = () => close(false);
+    });
+}
+
+// ------------------- 4. 配置 & Redis -------------------
 const CONTROL_PASSWORD = "5499";
-
-// Upstash Redis 连接信息（数据库地址和密钥）
-// ⚠️ 重要：如果不小心重置了数据库，只需要更新下面两行
 const UPSTASH_URL = "https://becoming-trout-101437.upstash.io";
 const UPSTASH_TOKEN = "gQAAAAAAAYw9AAIgcDE2ZjBmNDdkMTIyZTU0MzFlOGNhNTlkYzk1OWU1OTBjOA";
 
-/**
- * Redis 通用请求函数
- * 作用：和 Upstash 云端数据库通信，执行增删查改操作
- * @param {string} command - Redis 命令（如 GET、SET、DEL、KEYS、EXISTS）
- * @param  {...string} args - 命令参数
- * @returns 返回数据库的查询结果
- */
+const ADMIN_PANEL_HTML = `
+    <div class="admin-panel" id="adminPanel" style="display: block;">
+        <div class="admin-panel-header">
+            <h3 style="color:#C9262B; font-size:18px;">荆楚理工学院控制台</h3>
+        </div>
+        <div class="disclaimer">⚠️ 免责提示：本项目仅供技术交流与娱乐演示，严禁用于非法用途。</div>
+        <div class="form-group"><label>右上角卡号</label><input type="text" id="i-cardId" value="JCCUT20160892"></div>
+        <div class="form-group"><label>姓名</label><input type="text" id="i-name" value="唐海林"></div>
+        <div class="form-group"><label>学号</label><input type="text" id="i-stuId" value="2016211020208" inputmode="numeric"></div>
+        <div class="form-group"><label>院系</label><input type="text" id="i-department" value="经济与管理学院"></div>
+        <div class="form-group"><label>专业</label><input type="text" id="i-major" value="财务管理"></div>
+        <div class="form-group"><label>毕业年份</label><input type="text" id="i-gradYear" value="2020" inputmode="numeric"></div>
+        <button class="random-badge-btn-block" onclick="window.random()">🎲 随机专业与学号(2016-2020)</button>
+        <button class="panel-btn" style="background:#28a745;" onclick="window.generate()">🚀 生成并复制链接</button>
+        <button class="panel-btn" style="background:#5bc0de;" onclick="window.list()">📋 查看所有校友</button>
+        <button class="panel-btn" style="background:#d9534f;" onclick="window.del()">🗑️ 删除校友</button>
+        <button class="panel-btn" style="background:#ff9f43;" onclick="window.resetDeviceLock()">🔓 重置设备锁</button>
+        <button class="panel-btn" style="background:#444;" onclick="window.closePanel()">关闭控制台</button>
+    </div>
+`;
+
+let lastRequestTime = 0;
+const MIN_REQUEST_INTERVAL = 500;
+
 async function redis(command, ...args) {
+    const now = Date.now();
+    if (now - lastRequestTime < MIN_REQUEST_INTERVAL) {
+        throw new Error('操作过于频繁，请稍后再试');
+    }
+    lastRequestTime = now;
     const url = `${UPSTASH_URL}/${command}/${args.join('/')}`;
     const resp = await fetch(url, {
         headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` }
     });
-    if (!resp.ok) throw new Error('Redis error: ' + resp.status);
+    if (!resp.ok) throw new Error(`Redis HTTP ${resp.status}`);
     const data = await resp.json();
     return data.result;
 }
 
-// ╔══════════════════════════════════════════╗
-// ║  模块 2：数据库（院系专业、随机姓名）      ║
-// ╚══════════════════════════════════════════╝
-
-// 院系专业数据库（随机生成时从这里抽取）
+// ------------------- 5. 数据字典 -------------------
 const jcMajorDatabase = [
     { dept: "经济与管理学院", major: "财务管理", code: "21102" },
     { dept: "经济与管理学院", major: "大数据与会计", code: "30502" },
@@ -52,19 +137,12 @@ const jcMajorDatabase = [
     { dept: "艺术学院", major: "环境设计", code: "12050" },
     { dept: "外国语学院", major: "外国语言文学", code: "10500" }
 ];
-
-// 随机姓名的"姓"库（可自行增删）
 const firstNames = ["张","李","王","刘","陈","杨","赵","黄","周","吴","徐","孙","马","胡","郭","林"];
-
-// 随机姓名的"名"库（可自行增删）
 const lastNames = ["逸飞","梦溪","泽宇","梓涵","听风","晓静","嘉杰","雨桐","博远","子墨","瑞霖","思源","楚菁","雪珂","寒潞"];
 
-// ╔══════════════════════════════════════════╗
-// ║  模块 3：全局状态（当前显示的校友信息）    ║
-// ╚══════════════════════════════════════════╝
-
-// 当前校友卡上显示的信息（初始值为占位符）
-let currentConfig = { 
+// ------------------- 6. 响应式数据（Proxy） -------------------
+// 原始数据对象
+const rawConfig = {
     cardId: "--------",
     name: "--",
     stuId: "--",
@@ -73,24 +151,45 @@ let currentConfig = {
     gradYear: "--"
 };
 
-// 当前校友的短ID（从 URL 参数 ?id=xxx 中读取）
-let currentUserId = "";
+// 定义更新 UI 的函数（不依赖手动调用）
+function updateUI() {
+    if (DOM.vCardId) DOM.vCardId.innerText = rawConfig.cardId;
+    if (DOM.vName) DOM.vName.innerText = rawConfig.name;
+    if (DOM.vStuId) DOM.vStuId.innerText = rawConfig.stuId;
+    if (DOM.vDepartment) DOM.vDepartment.innerText = rawConfig.department;
+    if (DOM.vMajor) DOM.vMajor.innerText = rawConfig.major;
+    if (DOM.vGradYear) DOM.vGradYear.innerText = rawConfig.gradYear;
+    // 如果控制台已注入，同步表单
+    if (DOM.iCardId) {
+        DOM.iCardId.value = rawConfig.cardId === "--------" ? "" : rawConfig.cardId;
+        DOM.iName.value = rawConfig.name === "--" ? "" : rawConfig.name;
+        DOM.iStuId.value = rawConfig.stuId === "--" ? "" : rawConfig.stuId;
+        DOM.iDepartment.value = rawConfig.department === "--" ? "" : rawConfig.department;
+        DOM.iMajor.value = rawConfig.major === "--" ? "" : rawConfig.major;
+        DOM.iGradYear.value = rawConfig.gradYear === "--" ? "" : rawConfig.gradYear;
+    }
+}
 
-// 标记当前链接是否有效（true=有效，false=无效）
-let isCardDataValid = false;
+// 创建代理，拦截属性修改并自动刷新 UI
+const reactiveConfig = new Proxy(rawConfig, {
+    set(target, prop, value) {
+        target[prop] = value;
+        updateUI();  // 任何属性变化都自动重新渲染
+        return true;
+    }
+});
 
-// ╔══════════════════════════════════════════╗
-// ║  模块 4：拼音算法（中文姓名→拼音首字母）    ║
-// ╚══════════════════════════════════════════╝
+// 批量更新时避免频繁触发 UI（例如 load 时一次设置多个字段）
+function batchUpdate(callback) {
+    // 暂时解除代理（直接修改 rawConfig），或者使用防抖，这里简单起见允许多次触发，性能影响不大
+    callback();
+    updateUI(); // 最后保证一次刷新
+}
 
-/**
- * 把中文姓名转成拼音首字母缩写
- * 例如："唐海林" → "thl"、"张逸飞" → "zyf"
- */
+// ------------------- 7. 拼音首字母 -------------------
 function getChinesePinyinInitials(str) {
     if (!str) return "user";
-    
-    const m = {
+    const map = {
         '阿':'a','巴':'b','擦':'c','大':'d','俄':'e','发':'f','高':'g','哈':'h','贾':'j','卡':'k','拉':'l','马':'m',
         '拿':'n','欧':'o','潘':'p','钱':'q','任':'r','撒':'s','他':'t','王':'w','西':'x','压':'y','匝':'z',
         '陈':'c','胡':'h','林':'l','刘':'l','孙':'s','唐':'t','徐':'x','杨':'y','张':'z','赵':'z','周':'z',
@@ -100,431 +199,394 @@ function getChinesePinyinInitials(str) {
         '万':'w','魏':'w','文':'w','夏':'x','肖':'x','谢':'x','许':'x','叶':'y','于':'y','余':'y','易':'y',
         '郑':'z','朱':'z','左':'z'
     };
-    
     let r = "";
-    for (let c of str) {
-        if (/[a-zA-Z]/.test(c)) {
-            r += c.toLowerCase();
-        } else {
-            r += m[c] || 'x';
-        }
+    for (let ch of str) {
+        if (/[a-zA-Z]/.test(ch)) r += ch.toLowerCase();
+        else r += map[ch] || 'x';
     }
     return r || "uid";
 }
 
-// ╔══════════════════════════════════════════╗
-// ║  模块 5：设备锁（防止一个链接多人使用）    ║
-// ╚══════════════════════════════════════════╝
+// ------------------- 8. 设备锁（Canvas指纹） -------------------
+async function getCanvasFingerprint() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 300;
+    canvas.height = 150;
+    const ctx = canvas.getContext('2d');
+    ctx.textBaseline = 'top';
+    ctx.font = '20px Arial';
+    ctx.fillStyle = '#f60';
+    ctx.fillRect(0, 0, 100, 100);
+    ctx.fillStyle = '#069';
+    ctx.fillText('荆楚理工学院', 20, 30);
+    ctx.shadowBlur = 5;
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.fillStyle = '#0ac';
+    ctx.fillRect(120, 50, 80, 60);
+    ctx.beginPath();
+    ctx.arc(250, 80, 30, 0, Math.PI * 2);
+    ctx.fillStyle = '#c96';
+    ctx.fill();
+    const dataURL = canvas.toDataURL();
+    const buffer = new TextEncoder().encode(dataURL);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
+}
 
-/**
- * 获取或创建当前设备的唯一ID
- * 原理：首次访问时生成一个随机码，存入浏览器本地存储
- */
-function getDeviceId() {
-    const k = 'did';
-    let d = localStorage.getItem(k);
-    if (!d) {
-        d = 'D-' + Date.now() + '-' + Math.random().toString(36).substr(2,6);
-        localStorage.setItem(k, d);
+async function getDeviceId() {
+    const STORAGE_KEY = 'canvasFingerprint';
+    const LEGACY_KEY = 'did';
+    let fingerprint = localStorage.getItem(STORAGE_KEY);
+    if (fingerprint && fingerprint.length >= 16) return fingerprint;
+    try {
+        fingerprint = await getCanvasFingerprint();
+        if (fingerprint && fingerprint.length >= 16) {
+            localStorage.setItem(STORAGE_KEY, fingerprint);
+            localStorage.removeItem(LEGACY_KEY);
+            return fingerprint;
+        }
+        throw new Error('Invalid fingerprint');
+    } catch (e) {
+        console.warn('Canvas指纹失败，回退随机ID', e);
+        let legacyId = localStorage.getItem(LEGACY_KEY);
+        if (!legacyId) {
+            legacyId = 'D-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8);
+            localStorage.setItem(LEGACY_KEY, legacyId);
+        }
+        return legacyId;
     }
-    return d;
 }
 
-// ╔══════════════════════════════════════════╗
-// ║  模块 6：页面导航（首页↔校友卡页面）       ║
-// ╚══════════════════════════════════════════╝
-
-// 显示校友卡页面（隐藏首页）
+// ------------------- 9. 页面导航 -------------------
 function showCard() {
-    document.getElementById('page-home').style.display = 'none';
-    document.getElementById('page-card').style.display = 'flex';
-    document.getElementById('nav-title').innerText = '校友卡';
-    document.getElementById('nav-back-btn').style.visibility = 'visible';
+    if (DOM.pageHome) DOM.pageHome.style.display = 'none';
+    if (DOM.pageCard) DOM.pageCard.style.display = 'flex';
+    if (DOM.navTitle) DOM.navTitle.innerText = '校友卡';
+    if (DOM.navBackBtn) DOM.navBackBtn.style.visibility = 'visible';
 }
-
-// 显示首页（隐藏校友卡页面）
 function showHome() {
-    document.getElementById('page-card').style.display = 'none';
-    document.getElementById('page-home').style.display = 'flex';
-    document.getElementById('nav-title').innerText = '首页';
-    document.getElementById('nav-back-btn').style.visibility = 'hidden';
+    if (DOM.pageCard) DOM.pageCard.style.display = 'none';
+    if (DOM.pageHome) DOM.pageHome.style.display = 'flex';
+    if (DOM.navTitle) DOM.navTitle.innerText = '首页';
+    if (DOM.navBackBtn) DOM.navBackBtn.style.visibility = 'hidden';
 }
 
-/**
- * 点击首页热区时触发：验证设备是否有权查看校友卡
- */
 async function tryNavigateToCard() {
     if (!isCardDataValid) {
-        alert(
-            '📭 暂未识别到您的校友信息\n\n' +
-            '可能的原因：\n' +
-            '① 链接不完整或已失效\n' +
-            '② 该校友信息尚未录入系统\n' +
-            '③ 网络不稳定导致加载失败\n\n' +
-            '💡 解决方法：\n' +
-            '请确认您使用的是完整链接\n' +
-            '请核实校友信息是否已录入。'
-        );
+        showToast('暂未识别到您的校友信息，请确认链接完整');
         return;
     }
-
     const uid = currentUserId;
-    const did = getDeviceId();
-
+    const deviceId = await getDeviceId();
     try {
         const raw = await redis('GET', `user:${uid}`);
         if (!raw) {
-            alert(
-                '🔍 未找到该校友卡\n\n' +
-                '该链接对应的校友信息不存在。\n\n' +
-                '💡 可能原因：\n' +
-                '① 链接输入有误\n' +
-                '② 校友信息已被管理员删除\n\n' +
-                '请重新确认链接。'
-            );
+            showToast('未找到该校友卡');
             return;
         }
-
-        const u = JSON.parse(raw);
-
-        if (u.activated) {
-            if (u.deviceId !== did) {
-                alert(
-                    '🔒 设备验证失败\n\n' +
-                    '该校友卡已在其他设备上激活绑定。\n' +
-                    '为保障校友信息安全，一个链接仅限一台设备使用。\n\n' +
-                    '💡 如需更换设备，请联系管理员重置绑定。'
-                );
+        const userData = JSON.parse(raw);
+        if (userData.activated) {
+            if (userData.deviceId !== deviceId) {
+                showToast('设备验证失败，该校友卡已在其他设备绑定');
                 return;
             }
             showCard();
             return;
         }
-
-        if (confirm(
-            '🎓 欢迎使用校友卡\n\n' +
-            '这是您首次在此设备上打开该链接。\n\n' +
-            '📌 设备绑定说明：\n' +
-            '点击"确定"后，此校友卡将与当前设备绑定。\n' +
-            '绑定后仅限本设备查看，其他设备无法打开。\n\n' +
-            '如需更换设备，可联系管理员解除绑定。\n\n' +
-            '确认绑定此设备吗？'
-        )) {
-            u.activated = true;
-            u.deviceId = did;
-            await redis('SET', `user:${uid}`, JSON.stringify(u));
+        const ok = await showConfirm('点击"确定"后，此校友卡将与当前设备锁定绑定。', '欢迎使用校友卡');
+        if (ok) {
+            userData.activated = true;
+            userData.deviceId = deviceId;
+            await redis('SET', `user:${uid}`, JSON.stringify(userData));
             showCard();
         }
     } catch (e) {
-        console.error('设备锁验证失败:', e);
-        alert(
-            '🌐 网络连接异常\n\n' +
-            '无法连接到服务器验证您的身份。\n\n' +
-            '💡 请检查：\n' +
-            '① 手机网络是否正常\n' +
-            '② 是否处于信号较弱的环境\n\n' +
-            '确认网络正常后，请刷新页面重试。'
-        );
+        showToast('网络异常，请刷新重试');
     }
 }
 
-/**
- * 重置设备锁（管理员在控制台使用）
- */
 async function resetDeviceLock() {
-    const uid = currentUserId;
-    if (!uid) {
-        alert('未检测到当前校友信息，请先通过链接加载校友数据。');
+    if (!currentUserId) {
+        showToast('未检测到当前校友信息');
         return;
     }
-
     try {
-        const raw = await redis('GET', `user:${uid}`);
+        const raw = await redis('GET', `user:${currentUserId}`);
         if (raw) {
-            const u = JSON.parse(raw);
-            u.activated = false;
-            u.deviceId = null;
-            await redis('SET', `user:${uid}`, JSON.stringify(u));
+            const userData = JSON.parse(raw);
+            userData.activated = false;
+            userData.deviceId = null;
+            await redis('SET', `user:${currentUserId}`, JSON.stringify(userData));
+            showToast(`已解除 ${currentUserId} 的设备锁`);
         }
-        alert(`✅ 已成功解除 [${uid}] 的设备锁！\n\n下次打开链接将重新弹出激活确认。`);
     } catch (e) {
-        alert('重置失败，请稍后重试。');
+        showToast('重置失败');
     }
-
     showHome();
-    document.getElementById('adminPanel').classList.remove('active');
+    closePanel();
 }
 
-// ╔══════════════════════════════════════════╗
-// ║  模块 7：数据渲染（更新页面上的信息）      ║
-// ╚══════════════════════════════════════════╝
+// ------------------- 10. 加载链接数据（使用响应式） -------------------
+let currentUserId = "";
+let isCardDataValid = false;
 
-// 把 currentConfig 中的数据更新到校友卡上
-function render() {
-    document.getElementById('v-cardId').innerText = currentConfig.cardId;
-    document.getElementById('v-name').innerText = currentConfig.name;
-    document.getElementById('v-stuId').innerText = currentConfig.stuId;
-    document.getElementById('v-department').innerText = currentConfig.department;
-    document.getElementById('v-major').innerText = currentConfig.major;
-    document.getElementById('v-gradYear').innerText = currentConfig.gradYear;
-}
-
-// 把 currentConfig 中的数据同步到控制台的输入框里
-function sync() {
-    document.getElementById('i-cardId').value = currentConfig.cardId === "--------" ? "" : currentConfig.cardId;
-    document.getElementById('i-name').value = currentConfig.name === "--" ? "" : currentConfig.name;
-    document.getElementById('i-stuId').value = currentConfig.stuId === "--" ? "" : currentConfig.stuId;
-    document.getElementById('i-department').value = currentConfig.department === "--" ? "" : currentConfig.department;
-    document.getElementById('i-major').value = currentConfig.major === "--" ? "" : currentConfig.major;
-    document.getElementById('i-gradYear').value = currentConfig.gradYear === "--" ? "" : currentConfig.gradYear;
-}
-
-// ╔══════════════════════════════════════════╗
-// ║  模块 8：URL 参数解析（从链接中读取数据）   ║
-// ╚══════════════════════════════════════════╝
-
-/**
- * 页面加载时自动执行
- * 读取 URL 中的 ?id=xxx 参数，从云端加载对应的校友数据
- */
 async function load() {
     const params = new URLSearchParams(window.location.search);
     const id = params.get('id');
     if (!id) return;
-
     currentUserId = id;
-
+    showSkeleton(true); // 显示骨架屏
     try {
         const raw = await redis('GET', `user:${id}`);
         if (raw) {
             const u = JSON.parse(raw);
-            currentConfig = {
-                cardId: u.cardId || "",
-                name: u.name || "",
-                stuId: u.stuId || "",
-                department: u.department || "",
-                major: u.major || "",
-                gradYear: u.gradYear || ""
-            };
+            // 批量更新数据（触发响应式，但会多次更新UI，性能可接受）
+            reactiveConfig.cardId = u.cardId || "";
+            reactiveConfig.name = u.name || "--";
+            reactiveConfig.stuId = u.stuId || "--";
+            reactiveConfig.department = u.department || "--";
+            reactiveConfig.major = u.major || "--";
+            reactiveConfig.gradYear = u.gradYear || "--";
             isCardDataValid = true;
-            render();
-            sync();
+        } else {
+            isCardDataValid = false;
+            // 清空占位数据
+            reactiveConfig.cardId = "--------";
+            reactiveConfig.name = "--";
+            reactiveConfig.stuId = "--";
+            reactiveConfig.department = "--";
+            reactiveConfig.major = "--";
+            reactiveConfig.gradYear = "--";
         }
     } catch (e) {
-        console.error('从云端加载数据失败:', e);
+        console.error(e);
+        isCardDataValid = false;
+    } finally {
+        showSkeleton(false); // 隐藏骨架屏
     }
 }
 
-// ╔══════════════════════════════════════════╗
-// ║  模块 9：控制台功能（增删查改）            ║
-// ╚══════════════════════════════════════════╝
-
-/**
- * 【🎲 随机生成】功能
- * 随机生成一组完整的校友信息，并填入控制台表单
- */
+// ------------------- 11. 控制台功能 -------------------
+// 随机生成（直接操作控制台输入框，但为了响应式，应该修改 reactiveConfig？不，这里只填充表单，不改变当前显示的卡片）
 function random() {
     const y = Math.floor(Math.random() * 5) + 2016;
     const m = jcMajorDatabase[Math.floor(Math.random() * jcMajorDatabase.length)];
     const sid = `${y}${m.code}${String(Math.floor(Math.random()*3)+1).padStart(2,'0')}${String(Math.floor(Math.random()*40)+1).padStart(2,'0')}`;
     const rname = firstNames[Math.floor(Math.random()*firstNames.length)] + lastNames[Math.floor(Math.random()*lastNames.length)];
-
-    document.getElementById('i-stuId').value = sid;
-    document.getElementById('i-name').value = rname;
-    document.getElementById('i-department').value = m.dept;
-    document.getElementById('i-major').value = m.major;
-    document.getElementById('i-gradYear').value = y + 4;
-    document.getElementById('i-cardId').value = `JCCUT${y}0${Math.floor(Math.random() * 80) + 10}`;
+    if (DOM.iStuId) DOM.iStuId.value = sid;
+    if (DOM.iName) DOM.iName.value = rname;
+    if (DOM.iDepartment) DOM.iDepartment.value = m.dept;
+    if (DOM.iMajor) DOM.iMajor.value = m.major;
+    if (DOM.iGradYear) DOM.iGradYear.value = y + 4;
+    if (DOM.iCardId) DOM.iCardId.value = `JCCUT${y}0${Math.floor(Math.random() * 80) + 10}`;
 }
 
-/**
- * 【🚀 生成并复制链接】功能
- * 先同步复制链接，再异步保存到云端
- */
-function generate() {
-    // 读取表单数据
-    const c = {
-        cardId: document.getElementById('i-cardId').value.trim(),
-        name: document.getElementById('i-name').value.trim(),
-        stuId: document.getElementById('i-stuId').value.trim(),
-        department: document.getElementById('i-department').value.trim(),
-        major: document.getElementById('i-major').value.trim(),
-        gradYear: document.getElementById('i-gradYear').value.trim()
-    };
+async function copyToClipboard(text) {
+    try {
+        await navigator.clipboard.writeText(text);
+        return true;
+    } catch {
+        try {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            const ok = document.execCommand('copy');
+            document.body.removeChild(ta);
+            return ok;
+        } catch {
+            return false;
+        }
+    }
+}
 
-    if (!c.name || !c.stuId) {
-        alert('⚠️ 姓名和学号不能为空！');
+async function generate() {
+    const cardId = DOM.iCardId?.value.trim() || '';
+    const name = DOM.iName?.value.trim() || '';
+    const stuId = DOM.iStuId?.value.trim() || '';
+    const department = DOM.iDepartment?.value.trim() || '';
+    const major = DOM.iMajor?.value.trim() || '';
+    const gradYear = DOM.iGradYear?.value.trim() || '';
+    if (!name || !stuId) {
+        showToast('姓名和学号不能为空');
         return;
     }
-
-    // 计算短ID和链接（同步）
-    const id = getChinesePinyinInitials(c.name) + c.stuId.slice(-2);
-    const url = window.location.origin + window.location.pathname.replace(/\/$/, '') + '?id=' + id;
-
-    // 🔧 第一步：同步复制链接
-    let copied = false;
+    const shortId = getChinesePinyinInitials(name) + stuId.slice(-2);
+    const fullUrl = `${window.location.origin}${window.location.pathname.replace(/\/$/, '')}?id=${shortId}`;
+    const copied = await copyToClipboard(fullUrl);
+    if (copied) showToast('链接已复制到剪贴板');
+    else await showConfirm('复制失败，请手动复制链接', fullUrl);
+    
     try {
-        const ta = document.createElement('textarea');
-        ta.value = url;
-        ta.style.position = 'fixed';
-        ta.style.left = '-9999px';
-        ta.style.top = '-9999px';
-        document.body.appendChild(ta);
-        ta.focus();
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        copied = true;
-    } catch(e) {}
-
-    if (!copied) {
-        try {
-            navigator.clipboard.writeText(url);
-            copied = true;
-        } catch(e) {}
-    }
-
-    // 🔧 第二步：异步保存到云端（不阻塞复制）
-    (async () => {
-        try {
-            const exists = await redis('EXISTS', `user:${id}`);
-            if (exists) {
-                alert(`⚠️ 短ID "${id}" 已存在。\n\n链接已复制，但无法重复保存。`);
-                return;
-            }
-            await redis('SET', `user:${id}`, JSON.stringify({
-                ...c,
-                activated: false,
-                deviceId: null,
-                createdAt: Date.now()
-            }));
-            currentConfig = c;
-            currentUserId = id;
-            isCardDataValid = true;
-            render();
-            alert(`🎉 生成成功！\n\n短ID：${id}\n链接已复制到剪贴板。`);
-        } catch (e) {
-            alert('⚠️ 云端保存失败，但链接已复制。\n\n错误：' + e.message);
+        const exists = await redis('EXISTS', `user:${shortId}`);
+        if (exists === 1) {
+            showToast(`短ID "${shortId}" 已存在，链接已复制但无法重复保存`);
+            return;
         }
-    })();
-
-    // 先反馈复制结果
-    if (copied) {
-        alert('✅ 链接已复制到剪贴板！\n\n正在后台保存...');
-    } else {
-        prompt('请手动复制以下链接：', url);
+        await redis('SET', `user:${shortId}`, JSON.stringify({
+            cardId, name, stuId, department, major, gradYear,
+            activated: false, deviceId: null, createdAt: Date.now()
+        }));
+        await redis('SADD', 'alumni:index', shortId);
+        // 更新当前显示的数据（响应式）
+        reactiveConfig.cardId = cardId;
+        reactiveConfig.name = name;
+        reactiveConfig.stuId = stuId;
+        reactiveConfig.department = department;
+        reactiveConfig.major = major;
+        reactiveConfig.gradYear = gradYear;
+        currentUserId = shortId;
+        isCardDataValid = true;
+        showToast(`生成成功！短ID：${shortId}`);
+    } catch (e) {
+        showToast(`云端保存失败：${e.message}`);
     }
 }
 
-/**
- * 【📋 查看所有校友】功能（美化表格版 + 可删除）
- */
+// 使用 SSCAN 迭代
+async function getAllAlumniIds() {
+    let cursor = '0';
+    let ids = [];
+    do {
+        const [nextCursor, members] = await redis('SSCAN', 'alumni:index', cursor, 'COUNT', 100);
+        ids.push(...members);
+        cursor = nextCursor;
+    } while (cursor !== '0');
+    return ids;
+}
+
 async function list() {
     try {
-        const keys = await redis('KEYS', 'user:*');
-        if (!keys || keys.length === 0) {
-            alert('📭 暂无校友数据。\n\n请先生成校友卡后再查看。');
+        const ids = await getAllAlumniIds();
+        if (!ids || ids.length === 0) {
+            showToast('暂无校友数据');
             return;
         }
-
-        const vals = await redis('MGET', ...keys);
-        
-        let t = `共 ${keys.length} 位校友\n\n`;
-        
-        keys.forEach((k, i) => {
-            const u = JSON.parse(vals[i] || '{}');
+        const batchSize = 50;
+        let allUsers = [];
+        for (let i = 0; i < ids.length; i += batchSize) {
+            const batch = ids.slice(i, i + batchSize);
+            const vals = await redis('MGET', ...batch.map(id => `user:${id}`));
+            allUsers.push(...vals);
+        }
+        let msg = `共 ${ids.length} 位校友\n\n`;
+        ids.forEach((id, idx) => {
+            const u = JSON.parse(allUsers[idx] || '{}');
             const dot = u.activated ? '🟢' : '🔴';
-            // 姓名对齐：两字姓名中间加1个全角空格，使其宽度等于三字姓名
             let name = u.name || '?';
-            if (name.length === 2) {
-                name = name[0] + '　' + name[1]; // ← 只加1个全角空格
-            }
-            t += `${dot} ${name} · ${k.replace('user:', '')}\n`;
+            if (name.length === 2) name = name[0] + '　' + name[1];
+            msg += `${dot} ${name} · ${id}\n`;
         });
-        
-        t += `\n点击【确定】可删除校友`;
-
-        if (confirm(t)) {
+        msg += `\n点击确定可输入ID删除`;
+        const wantDelete = await showConfirm(msg, '校友列表');
+        if (wantDelete) {
             const id = prompt('输入要删除的短ID：');
-            if (id && confirm(`确认删除 ${id}？`)) {
-                const exists = await redis('EXISTS', `user:${id}`);
-                if (!exists) {
-                    alert(`${id} 不存在`);
-                } else {
-                    await redis('DEL', `user:${id}`);
-                    alert(`${id} 已删除`);
-                }
+            if (id && await showConfirm(`确认删除 ${id} ？`, '警告')) {
+                await redis('DEL', `user:${id}`);
+                await redis('SREM', 'alumni:index', id);
+                showToast(`${id} 已删除`);
             }
         }
     } catch (e) {
-        alert('加载失败：' + e.message);
+        showToast(`加载失败：${e.message}`);
     }
 }
 
-/**
- * 【🗑️ 删除校友】功能
- */
 async function del() {
-    const id = prompt('请输入要删除的校友短ID：\n（例如：thl08）');
+    const id = prompt('请输入要删除的校友短ID：');
     if (!id) return;
-
-    if (!confirm(`⚠️ 确认删除校友 "${id}" 吗？\n\n此操作不可恢复！`)) return;
-
+    const confirmed = await showConfirm(`确认删除 "${id}" ？不可恢复！`, '警告');
+    if (!confirmed) return;
     try {
         const exists = await redis('EXISTS', `user:${id}`);
-        if (!exists) {
-            alert(`❌ 校友 "${id}" 不存在。`);
+        if (exists === 0) {
+            showToast(`校友 "${id}" 不存在`);
             return;
         }
-
         await redis('DEL', `user:${id}`);
-        alert(`✅ 校友 "${id}" 已成功删除。`);
+        await redis('SREM', 'alumni:index', id);
+        showToast(`已删除`);
     } catch (e) {
-        alert('❌ 删除失败：' + e.message);
+        showToast(`删除失败：${e.message}`);
     }
 }
 
-// 关闭控制台面板
 function closePanel() {
-    document.getElementById('adminPanel').classList.remove('active');
+    const panel = document.getElementById('adminPanel');
+    if (panel) panel.remove();
+    DOM.iCardId = DOM.iName = DOM.iStuId = DOM.iDepartment = DOM.iMajor = DOM.iGradYear = null;
 }
 
-// ╔══════════════════════════════════════════╗
-// ║  模块 10：三指手势 + 密码验证            ║
-// ╚══════════════════════════════════════════╝
+// 控制台表单双向绑定：当控制台注入后，监听输入事件同步到 reactiveConfig
+function bindConsoleEvents() {
+    if (!DOM.iName) return;
+    DOM.iCardId.addEventListener('input', (e) => { reactiveConfig.cardId = e.target.value; });
+    DOM.iName.addEventListener('input', (e) => { reactiveConfig.name = e.target.value; });
+    DOM.iStuId.addEventListener('input', (e) => { reactiveConfig.stuId = e.target.value; });
+    DOM.iDepartment.addEventListener('input', (e) => { reactiveConfig.department = e.target.value; });
+    DOM.iMajor.addEventListener('input', (e) => { reactiveConfig.major = e.target.value; });
+    DOM.iGradYear.addEventListener('input', (e) => { reactiveConfig.gradYear = e.target.value; });
+}
 
-document.getElementById('gestureArea').addEventListener('touchstart', (e) => {
-    if (e.touches.length === 3) {
-        const p = prompt('🔐 请输入控制台密码：');
-        if (p === CONTROL_PASSWORD) {
-            document.getElementById('adminPanel').classList.add('active');
-            sync();
-        } else if (p !== null) {
-            alert('❌ 密码错误，无法打开控制台');
+// ------------------- 12. 三指手势打开控制台（动态注入） -------------------
+const gestureArea = document.getElementById('gestureArea');
+if (gestureArea) {
+    gestureArea.addEventListener('touchstart', async (e) => {
+        if (e.touches.length === 3) {
+            if (document.getElementById('adminPanel')) return;
+            const pwd = prompt('🔐 请输入控制台密码：');
+            if (pwd === CONTROL_PASSWORD) {
+                document.body.insertAdjacentHTML('beforeend', ADMIN_PANEL_HTML);
+                // 重新获取控制台 DOM 元素并绑定事件
+                DOM.iCardId = document.getElementById('i-cardId');
+                DOM.iName = document.getElementById('i-name');
+                DOM.iStuId = document.getElementById('i-stuId');
+                DOM.iDepartment = document.getElementById('i-department');
+                DOM.iMajor = document.getElementById('i-major');
+                DOM.iGradYear = document.getElementById('i-gradYear');
+                bindConsoleEvents();
+                // 同步当前数据显示到表单
+                updateUI();
+            } else if (pwd !== null) {
+                showToast('密码错误');
+            }
         }
-    }
-});
+    });
+}
 
-// ╔══════════════════════════════════════════╗
-// ║  模块 11：北京时间实时时钟               ║
-// ╚══════════════════════════════════════════╝
-
-function clock() {
-    const d = new Date();
-    const bj = new Date(d.getTime() + d.getTimezoneOffset() * 60000 + 28800000);
-    document.getElementById('live-clock-bar').innerText = 
-        `当前时间：${bj.getFullYear()}年${String(bj.getMonth() + 1).padStart(2, '0')}月${String(bj.getDate()).padStart(2, '0')}日 ${String(bj.getHours()).padStart(2, '0')}:${String(bj.getMinutes()).padStart(2, '0')}:${String(bj.getSeconds()).padStart(2, '0')}`;
+// ------------------- 13. 北京时间时钟 + 刷新按钮旋转动画 -------------------
+function updateClock() {
+    const now = new Date();
+    const beijing = new Date(now.getTime() + now.getTimezoneOffset() * 60000 + 28800000);
+    const str = `${beijing.getFullYear()}年${String(beijing.getMonth()+1).padStart(2,'0')}月${String(beijing.getDate()).padStart(2,'0')}日 ${String(beijing.getHours()).padStart(2,'0')}:${String(beijing.getMinutes()).padStart(2,'0')}:${String(beijing.getSeconds()).padStart(2,'0')}`;
+    if (DOM.liveClockBar) DOM.liveClockBar.innerText = `当前时间：${str}`;
 }
 
 function triggerManualRefresh() {
-    clock();
+    const refreshBtn = document.querySelector('.refresh-lnk');
+    if (refreshBtn) {
+        refreshBtn.classList.add('rotating');
+        setTimeout(() => refreshBtn.classList.remove('rotating'), 500);
+    }
+    updateClock();
 }
 
-// ╔══════════════════════════════════════════╗
-// ║  模块 12：页面启动（自动执行）            ║
-// ╚══════════════════════════════════════════╝
-
+// ------------------- 14. 启动 -------------------
 showHome();
 load();
-clock();
-setInterval(clock, 1000);
+updateClock();
+setInterval(updateClock, 1000);
+
+// 暴露全局函数供内联事件调用
+window.showHome = showHome;
+window.tryNavigateToCard = tryNavigateToCard;
+window.triggerManualRefresh = triggerManualRefresh;
+window.random = random;
+window.generate = generate;
+window.list = list;
+window.del = del;
+window.resetDeviceLock = resetDeviceLock;
+window.closePanel = closePanel;
