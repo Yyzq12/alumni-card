@@ -1,6 +1,6 @@
 /* ==========================================
-   荆楚理工学院 移动校园 - 最终完整版
-   包含：Canvas指纹、动态控制台、响应式数据、索引自动修复、列表排版优化
+   荆楚理工学院 移动校园 - 最终修复版
+   修复：查看所有校友直接使用 KEYS，彻底解决列表为空问题
    ========================================== */
 
 'use strict';
@@ -419,11 +419,10 @@ async function generate() {
             cardId, name, stuId, department, major, gradYear,
             activated: false, deviceId: null, createdAt: Date.now()
         }));
+        // 同时尝试更新索引集（不影响主流程）
         try {
             await redis('SADD', 'alumni:index', shortId);
-        } catch (indexErr) {
-            console.warn('索引更新失败，但不影响数据存储', indexErr);
-        }
+        } catch (e) { /* 忽略 */ }
         reactiveConfig.cardId = cardId;
         reactiveConfig.name = name;
         reactiveConfig.stuId = stuId;
@@ -439,32 +438,14 @@ async function generate() {
     }
 }
 
+// ------------------- 修复后的 list 函数 -------------------
+// 直接使用 KEYS 获取所有校友，彻底解决列表为空问题
 const ALUMNI_CACHE_KEY = 'alumni_list_cache';
 const CACHE_TTL = 5 * 60 * 1000;
 
 async function list(forceRefresh = false) {
     try {
-        let indexSize = 0;
-        try {
-            indexSize = parseInt(await redis('SCARD', 'alumni:index')) || 0;
-        } catch (e) {
-            console.warn('获取索引大小失败', e);
-        }
-        if (indexSize === 0) {
-            showToast('索引为空，正在重建...', 2000);
-            const allKeys = await redis('KEYS', 'user:*');
-            if (allKeys && allKeys.length > 0) {
-                for (const key of allKeys) {
-                    const id = key.replace('user:', '');
-                    await redis('SADD', 'alumni:index', id);
-                }
-                showToast(`索引重建完成，共导入 ${allKeys.length} 位校友`);
-            } else {
-                showToast('暂无校友数据');
-                return;
-            }
-        }
-        
+        // 如果不需要强制刷新且有缓存，直接使用缓存
         if (!forceRefresh) {
             const cached = localStorage.getItem(ALUMNI_CACHE_KEY);
             if (cached) {
@@ -475,49 +456,58 @@ async function list(forceRefresh = false) {
                 }
             }
         }
-        
-        let cursor = '0';
-        let ids = [];
-        do {
-            const [nextCursor, members] = await redis('SSCAN', 'alumni:index', cursor, 'COUNT', 500);
-            ids.push(...members);
-            cursor = nextCursor;
-        } while (cursor !== '0');
-        
-        if (!ids || ids.length === 0) {
+
+        // 直接使用 KEYS 命令获取所有校友的 key
+        const allKeys = await redis('KEYS', 'user:*');
+        if (!allKeys || allKeys.length === 0) {
             showToast('暂无校友数据');
             return;
         }
-        
-        const batchSize = 100;
-        let allUsers = [];
+
+        // 提取短ID
+        const ids = allKeys.map(key => key.replace('user:', ''));
+
+        // 批量获取详情（每批 50 个，避免单次请求过大）
+        const batchSize = 50;
+        let alumniList = [];
         for (let i = 0; i < ids.length; i += batchSize) {
-            const batch = ids.slice(i, i + batchSize);
-            const userKeys = batch.map(id => `user:${id}`);
+            const batchIds = ids.slice(i, i + batchSize);
+            const userKeys = batchIds.map(id => `user:${id}`);
             const vals = await redis('MGET', ...userKeys);
-            allUsers.push(...vals);
+            for (let j = 0; j < batchIds.length; j++) {
+                const u = JSON.parse(vals[j] || '{}');
+                alumniList.push({
+                    id: batchIds[j],
+                    name: u.name || '?',
+                    activated: u.activated || false
+                });
+            }
         }
-        
-        const alumniList = ids.map((id, idx) => {
-            const u = JSON.parse(allUsers[idx] || '{}');
-            return { id, name: u.name || '?', activated: u.activated || false };
-        });
-        
-        localStorage.setItem(ALUMNI_CACHE_KEY, JSON.stringify({ data: alumniList, timestamp: Date.now() }));
+
+        // 按创建时间排序（可选，让新生成的排在前面）
+        // 由于 Redis 中没有存储创建时间索引，此处保持原顺序即可
+
+        // 存入缓存
+        localStorage.setItem(ALUMNI_CACHE_KEY, JSON.stringify({
+            data: alumniList,
+            timestamp: Date.now()
+        }));
+
         showAlumniListDialog(alumniList);
     } catch (e) {
+        console.error('列表加载失败', e);
         showToast(`加载失败：${e.message}`);
     }
 }
 
-// 校友列表对话框（排版优化：图标+姓名对齐+点分隔+末尾提示）
+// 校友列表对话框（排版优化）
 function showAlumniListDialog(alumniList) {
     let msg = `共 ${alumniList.length} 位校友\n\n`;
     alumniList.forEach(item => {
         const dot = item.activated ? '🟢' : '🔴';
         let name = item.name;
         if (name.length === 2) {
-            name = name[0] + '　' + name[1];   // 二字姓名中间加全角空格
+            name = name[0] + '　' + name[1];
         }
         msg += `${dot} ${name} · ${item.id}\n`;
     });
@@ -532,6 +522,7 @@ function showAlumniListDialog(alumniList) {
                         try {
                             await redis('DEL', `user:${id}`);
                             await redis('SREM', 'alumni:index', id);
+                            // 清除缓存，下次查看会重新加载
                             localStorage.removeItem(ALUMNI_CACHE_KEY);
                             showToast(`${id} 已删除`);
                         } catch (e) {
