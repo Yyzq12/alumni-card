@@ -1,6 +1,7 @@
 /* ==========================================
-   荆楚理工学院 移动校园 - 核心逻辑 (最终极致版)
-   特性：动态控制台、Canvas指纹、校友列表(排序/复制/删除)、自定义弹窗、无限流
+   荆楚理工学院 移动校园 - 核心逻辑 (自定义弹窗版)
+   特性：动态控制台、Canvas指纹、校友列表(排序/复制/删除)、自定义弹窗
+   生成链接使用旧版可靠复制逻辑 + 非阻塞自定义弹窗
    ========================================== */
 
 'use strict';
@@ -84,7 +85,6 @@ const CONTROL_PASSWORD = "5499";
 const UPSTASH_URL = "https://becoming-trout-101437.upstash.io";
 const UPSTASH_TOKEN = "gQAAAAAAAYw9AAIgcDE2ZjBmNDdkMTIyZTU0MzFlOGNhNTlkYzk1OWU1OTBjOA";
 
-// 控制台 HTML（动态注入）
 const ADMIN_PANEL_HTML = `
     <div class="admin-panel" id="adminPanel" style="display: block;">
         <div class="admin-panel-header">
@@ -361,11 +361,12 @@ function random() {
     if (DOM.iCardId) DOM.iCardId.value = `JCCUT${y}0${Math.floor(Math.random() * 80) + 10}`;
 }
 
-// ---------- 同步复制函数（稳定版）----------
-function syncCopyToClipboard(text) {
+// ---------- 复制校友链接（供表格按钮使用）----------
+window.copyAlumniLink = async function(id) {
+    const link = `${window.location.origin}${window.location.pathname.replace(/\/$/, '')}?id=${id}`;
     try {
         const ta = document.createElement('textarea');
-        ta.value = text;
+        ta.value = link;
         ta.style.position = 'fixed';
         ta.style.left = '-9999px';
         ta.style.top = '-9999px';
@@ -374,60 +375,66 @@ function syncCopyToClipboard(text) {
         ta.select();
         const success = document.execCommand('copy');
         document.body.removeChild(ta);
-        if (success) return true;
-    } catch (e) {}
-    if (navigator.clipboard && window.isSecureContext) {
-        try {
-            navigator.clipboard.writeText(text);
-            return true;
-        } catch (e) {}
-    }
-    return false;
-}
-
-// 复制校友链接（供表格按钮使用）
-window.copyAlumniLink = async function(id) {
-    const link = `${window.location.origin}${window.location.pathname.replace(/\/$/, '')}?id=${id}`;
-    const copied = syncCopyToClipboard(link);
-    if (copied) {
-        showToast('链接已复制到剪贴板');
-    } else {
+        if (success) {
+            showToast('链接已复制到剪贴板');
+        } else {
+            await showConfirm('复制失败，请手动复制链接', link);
+        }
+    } catch (e) {
         await showConfirm('复制失败，请手动复制链接', link);
     }
 };
 
-async function generateUniqueShortId(baseName, baseStuId, maxRetries = 3) {
-    let shortId = getChinesePinyinInitials(baseName) + baseStuId.slice(-2);
-    let retry = 0;
-    while (retry < maxRetries) {
-        const exists = await redis('EXISTS', `user:${shortId}`);
-        if (exists === 0) return shortId;
-        const suffix = String(Math.floor(Math.random() * 90) + 10);
-        shortId = getChinesePinyinInitials(baseName) + baseStuId.slice(-2) + suffix.slice(-2);
-        retry++;
-    }
-    throw new Error('生成短ID失败，请稍后重试或修改姓名/学号');
-}
-
+// ---------- 生成链接（旧版可靠复制逻辑 + 自定义弹窗）----------
 async function generate() {
-    const cardId = DOM.iCardId?.value.trim() || '';
-    const name = DOM.iName?.value.trim() || '';
-    const stuId = DOM.iStuId?.value.trim() || '';
-    const department = DOM.iDepartment?.value.trim() || '';
-    const major = DOM.iMajor?.value.trim() || '';
-    const gradYear = DOM.iGradYear?.value.trim() || '';
+    // 读取表单数据
+    const cardId = document.getElementById('i-cardId').value.trim();
+    const name = document.getElementById('i-name').value.trim();
+    const stuId = document.getElementById('i-stuId').value.trim();
+    const department = document.getElementById('i-department').value.trim();
+    const major = document.getElementById('i-major').value.trim();
+    const gradYear = document.getElementById('i-gradYear').value.trim();
+
     if (!name || !stuId) {
         showToast('姓名和学号不能为空');
         return;
     }
-    const shortId = await generateUniqueShortId(name, stuId);
-    const fullUrl = `${window.location.origin}${window.location.pathname.replace(/\/$/, '')}?id=${shortId}`;
-    const copied = syncCopyToClipboard(fullUrl);
+
+    // 计算短ID和链接（同步）
+    const shortId = getChinesePinyinInitials(name) + stuId.slice(-2);
+    const fullUrl = window.location.origin + window.location.pathname.replace(/\/$/, '') + '?id=' + shortId;
+
+    // 🔧 第一步：同步复制链接
+    let copied = false;
+    try {
+        const ta = document.createElement('textarea');
+        ta.value = fullUrl;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        ta.style.top = '-9999px';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        copied = true;
+    } catch(e) {}
+
+    if (!copied) {
+        try {
+            navigator.clipboard.writeText(fullUrl);
+            copied = true;
+        } catch(e) {}
+    }
+
+    // 复制反馈（非阻塞）
     if (copied) {
-        showToast('链接已复制到剪贴板');
+        showToast('链接已复制到剪贴板，正在后台保存...');
     } else {
         await showConfirm('自动复制失败，请手动复制下方链接', fullUrl);
     }
+
+    // 🔧 第二步：异步保存到云端（不阻塞复制反馈）
     (async () => {
         try {
             const exists = await redis('EXISTS', `user:${shortId}`);
@@ -442,6 +449,7 @@ async function generate() {
                 createdAt: Date.now()
             }));
             await redis('SADD', 'alumni:index', shortId);
+            // 更新响应式数据
             reactiveConfig.cardId = cardId;
             reactiveConfig.name = name;
             reactiveConfig.stuId = stuId;
@@ -451,10 +459,10 @@ async function generate() {
             currentUserId = shortId;
             isCardDataValid = true;
             showToast(`生成成功！短ID：${shortId}`);
+            // 刷新校友列表
             await loadAlumniTable(true);
         } catch (e) {
-            console.error('生成保存失败', e);
-            showToast(`保存失败：${e.message}`);
+            showToast(`云端保存失败：${e.message}`);
         }
     })();
 }
