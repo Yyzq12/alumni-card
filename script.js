@@ -1,6 +1,6 @@
 /* ==========================================
-   荆楚理工学院 移动校园 - 基础版（无审核、无注册）
-   包含：Canvas指纹、动态控制台、校友列表（排序）、删除确认显示姓名
+   荆楚理工学院 移动校园 - 基础版（表格增加复制链接按钮）
+   包含：Canvas指纹、动态控制台、校友列表（排序、复制链接、删除确认）
    ========================================== */
 
 'use strict';
@@ -101,7 +101,7 @@ const ADMIN_PANEL_HTML = `
         <button class="panel-btn" style="background:#ff9f43;" onclick="window.resetDeviceLock()">🔓 重置设备锁</button>
         <button class="panel-btn" style="background:#444;" onclick="window.closePanel()">关闭控制台</button>
         
-        <div id="alumni-header" style="margin-top:20px; font-weight:bold; font-size:14px; color:#ffbcbc;">加载中...</div>
+        <div id="alumni-header" style="margin-top:20px; font-weight:bold; font-size:14px; color:#ffbcbc; text-align:center;">加载中...</div>
         <div id="alumni-table-container" style="max-height:400px; overflow-y:auto; border-top:1px solid #444; margin-top:8px; padding-top:8px;"></div>
     </div>
 `;
@@ -360,26 +360,41 @@ function random() {
     if (DOM.iCardId) DOM.iCardId.value = `JCCUT${y}0${Math.floor(Math.random() * 80) + 10}`;
 }
 
-async function copyToClipboard(text) {
+// ---------- 同步复制函数 ----------
+function syncCopyToClipboard(text) {
     try {
-        await navigator.clipboard.writeText(text);
-        return true;
-    } catch {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        ta.style.top = '-9999px';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const success = document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (success) return true;
+    } catch (e) {}
+    
+    if (navigator.clipboard && window.isSecureContext) {
         try {
-            const ta = document.createElement('textarea');
-            ta.value = text;
-            ta.style.position = 'fixed';
-            ta.style.left = '-9999px';
-            document.body.appendChild(ta);
-            ta.select();
-            const ok = document.execCommand('copy');
-            document.body.removeChild(ta);
-            return ok;
-        } catch {
-            return false;
-        }
+            navigator.clipboard.writeText(text);
+            return true;
+        } catch (e) {}
     }
+    return false;
 }
+
+// 复制校友链接（供表格按钮使用）
+window.copyAlumniLink = async function(id) {
+    const link = `${window.location.origin}${window.location.pathname.replace(/\/$/, '')}?id=${id}`;
+    const copied = syncCopyToClipboard(link);
+    if (copied) {
+        showToast('链接已复制到剪贴板');
+    } else {
+        await showConfirm('复制失败，请手动复制链接', link);
+    }
+};
 
 async function generateUniqueShortId(baseName, baseStuId, maxRetries = 3) {
     let shortId = getChinesePinyinInitials(baseName) + baseStuId.slice(-2);
@@ -405,42 +420,49 @@ async function generate() {
         showToast('姓名和学号不能为空');
         return;
     }
+    
     const shortId = await generateUniqueShortId(name, stuId);
     const fullUrl = `${window.location.origin}${window.location.pathname.replace(/\/$/, '')}?id=${shortId}`;
-    const copied = await copyToClipboard(fullUrl);
-    if (copied) showToast('链接已复制到剪贴板');
-    else await showConfirm('复制失败，请手动复制链接', fullUrl);
     
-    try {
-        const exists = await redis('EXISTS', `user:${shortId}`);
-        if (exists === 1) {
-            showToast(`短ID "${shortId}" 已存在，链接已复制但无法重复保存`);
-            return;
-        }
-        await redis('SET', `user:${shortId}`, JSON.stringify({
-            cardId, name, stuId, department, major, gradYear,
-            activated: false,
-            deviceId: null,
-            createdAt: Date.now()
-        }));
-        await redis('SADD', 'alumni:index', shortId);
-        reactiveConfig.cardId = cardId;
-        reactiveConfig.name = name;
-        reactiveConfig.stuId = stuId;
-        reactiveConfig.department = department;
-        reactiveConfig.major = major;
-        reactiveConfig.gradYear = gradYear;
-        currentUserId = shortId;
-        isCardDataValid = true;
-        showToast(`生成成功！短ID：${shortId}`);
-        await loadAlumniTable(true);
-    } catch (e) {
-        console.error('生成保存失败', e);
-        showToast(`保存失败：${e.message}`);
+    const copied = syncCopyToClipboard(fullUrl);
+    if (copied) {
+        showToast('链接已复制到剪贴板');
+    } else {
+        await showConfirm('自动复制失败，请手动复制下方链接', fullUrl);
     }
+    
+    (async () => {
+        try {
+            const exists = await redis('EXISTS', `user:${shortId}`);
+            if (exists === 1) {
+                showToast(`短ID "${shortId}" 已存在，链接已复制但无法重复保存`);
+                return;
+            }
+            await redis('SET', `user:${shortId}`, JSON.stringify({
+                cardId, name, stuId, department, major, gradYear,
+                activated: false,
+                deviceId: null,
+                createdAt: Date.now()
+            }));
+            await redis('SADD', 'alumni:index', shortId);
+            reactiveConfig.cardId = cardId;
+            reactiveConfig.name = name;
+            reactiveConfig.stuId = stuId;
+            reactiveConfig.department = department;
+            reactiveConfig.major = major;
+            reactiveConfig.gradYear = gradYear;
+            currentUserId = shortId;
+            isCardDataValid = true;
+            showToast(`生成成功！短ID：${shortId}`);
+            await loadAlumniTable(true);
+        } catch (e) {
+            console.error('生成保存失败', e);
+            showToast(`保存失败：${e.message}`);
+        }
+    })();
 }
 
-// ------------------- 校友表格（按时间排序，删除确认显示姓名） -------------------
+// ------------------- 校友表格（增加复制链接列） -------------------
 const ALUMNI_CACHE_KEY = 'alumni_list_cache';
 const CACHE_TTL = 5 * 60 * 1000;
 
@@ -500,14 +522,16 @@ async function loadAlumniTable(forceRefresh = false) {
             return;
         }
         
+        // 列宽调整：状态10%、姓名12%、短ID12%、专业36%、链接15%、删除15%
         let html = `<table style="width:100%; border-collapse:collapse; color:#fff; font-size:13px;">
             <thead>
                 <tr style="border-bottom:2px solid #555;">
                     <th style="padding:8px 4px; text-align:left; width:10%;">状态</th>
-                    <th style="padding:8px 4px; text-align:left; width:15%;">姓名</th>
-                    <th style="padding:8px 4px; text-align:left; width:15%;">短ID</th>
-                    <th style="padding:8px 4px; text-align:left; width:40%;">专业</th>
-                    <th style="padding:8px 4px; text-align:center; width:20%;">操作</th>
+                    <th style="padding:8px 4px; text-align:left; width:12%;">姓名</th>
+                    <th style="padding:8px 4px; text-align:left; width:12%;">短ID</th>
+                    <th style="padding:8px 4px; text-align:left; width:36%;">专业</th>
+                    <th style="padding:8px 4px; text-align:center; width:15%;">链接</th>
+                    <th style="padding:8px 4px; text-align:center; width:15%;">删除</th>
                 </tr>
             </thead>
             <tbody>`;
@@ -521,7 +545,10 @@ async function loadAlumniTable(forceRefresh = false) {
                 <td style="padding:6px 4px; font-family:monospace;">${item.id}</td>
                 <td style="padding:6px 4px;">${escapeHtml(item.major)}</td>
                 <td style="padding:6px 4px; text-align:center;">
-                    <button onclick="window.deleteAlumniById('${item.id}')" style="background:#d9534f; border:none; color:#fff; padding:2px 10px; border-radius:3px; cursor:pointer;">删除</button>
+                    <button onclick="window.copyAlumniLink('${item.id}')" style="background:#17a2b8; border:none; color:#fff; padding:2px 8px; border-radius:3px; cursor:pointer;">复制链接</button>
+                </td>
+                <td style="padding:6px 4px; text-align:center;">
+                    <button onclick="window.deleteAlumniById('${item.id}')" style="background:#d9534f; border:none; color:#fff; padding:2px 8px; border-radius:3px; cursor:pointer;">删除</button>
                 </td>
             </tr>`;
         }
@@ -642,3 +669,4 @@ window.list = list;
 window.resetDeviceLock = resetDeviceLock;
 window.closePanel = closePanel;
 window.deleteAlumniById = deleteAlumniById;
+window.copyAlumniLink = copyAlumniLink;
