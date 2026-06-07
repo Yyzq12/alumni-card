@@ -8,49 +8,31 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="荆楚理工学院 移动校园">
     <link rel="apple-touch-icon" href="icon.png">
-
-    <!-- 禁止浏览器缓存，保证每次打开都是最新版 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-
     <title>荆楚理工学院 移动校园</title>
-    <!-- 引入样式文件（style.css） -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- ========== 顶栏手势触发区域（三指触摸打开控制台） ========== -->
     <div class="admin-trigger" id="gestureArea"></div>
     
-    <!-- ========== 微信小程序模拟外壳 ========== -->
     <div class="wx-container">
-
-        <!-- ========== 顶部导航栏 ========== -->
         <div class="wx-nav">
-            <!-- 返回按钮，默认隐藏，仅在卡片页显示 -->
-            <span id="nav-back-btn" onclick="navigateToHome()" style="cursor:pointer; visibility: hidden;">〈 首页</span>
-            <!-- 导航栏标题，根据页面切换"首页"或"校友卡" -->
+            <span id="nav-back-btn" onclick="showHome()" style="cursor:pointer; visibility: hidden;">〈 首页</span>
             <span id="nav-title">首页</span>
-            <!-- 模拟微信胶囊按钮（纯装饰） -->
             <div class="wx-capsule"><span>•••</span> <span>●</span></div>
         </div>
         
-        <!-- ========== 首页 ========== -->
         <div id="page-home">
-            <!-- 首页背景图，可替换成你自己的图片，改名后覆盖 home-bg.png 即可 -->
             <img class="home-mock-bg" src="home-bg.png" alt="小程序首页">
-            <!-- 透明热区（点击跳转校友卡），位置和大小可在 style.css 中调整 -->
             <div class="hotspot-alumni-card" onclick="tryNavigateToCard()"></div>
         </div>
         
-        <!-- ========== 校友卡页面（默认隐藏） ========== -->
         <div id="page-card">
-            <!-- 校友卡卡片 -->
             <div class="alumni-card">
                 <div class="card-top-area">
-                    <!-- 右上角卡号 -->
                     <div class="card-serial" id="v-cardId">--------</div>
-                    <!-- 卡片上的信息字段 -->
                     <div class="info-fields">
                         <div class="info-row"><div class="info-label">姓名：</div><div class="info-value" id="v-name">--</div></div>
                         <div class="info-row"><div class="info-label">学号：</div><div class="info-value" id="v-stuId">--</div></div>
@@ -59,70 +41,39 @@
                         <div class="info-row"><div class="info-label">毕业年份：</div><div class="info-value" id="v-gradYear">--</div></div>
                     </div>
                 </div>
-                <!-- 底部金色装饰条 -->
                 <div class="card-gold-strip"></div>
             </div>
-
-            <!-- 二维码面板 -->
             <div class="white-panel">
                 <div class="qr-header-title">校友二维码</div>
-                <div class="qr-box-border">
-                    <!-- 二维码图片，可替换成自己的图，改名后覆盖 qr.png 即可 -->
-                    <img id="v-qr" src="qr.png" alt="二维码">
-                </div>
+                <div class="qr-box-border"><img id="v-qr" src="qr.png" alt="二维码"></div>
                 <div class="refresh-lnk" onclick="triggerManualRefresh()">↻ 刷新</div>
-                <!-- 北京时间显示栏 -->
                 <div class="live-timer-container" id="live-clock-bar">当前时间：读取中...</div>
             </div>
         </div>
     </div>
 
-    <!-- ========== 控制台面板（默认隐藏） ========== -->
     <div class="admin-panel" id="adminPanel">
         <div class="admin-panel-header">
             <h3 style="color:#C9262B; font-size:18px;">荆楚理工学院控制台</h3>
         </div>
-        
-        <!-- 免责声明 -->
         <div style="background: rgba(199, 38, 43, 0.15); border: 1px solid #C9262B; padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 11px; color: #ffbcbc; line-height: 1.5;">
-            <strong>⚠️ 技术演示与娱乐免责提示：</strong><br>
-            本项目属于纯前端视觉技术原型，仅供技术交流与娱乐演示。严禁用于任何形式的伪造欺骗或其它违反国家法律的非法用途。使用者自身承担全部责任。
+            <strong>⚠️ 免责提示：</strong>本项目仅供技术交流与娱乐演示，严禁用于非法用途。
         </div>
-        
-        <!-- 表单字段，id 对应 script.js 中的变量，修改默认值直接改 value 属性即可 -->
         <div class="form-group"><label>右上角卡号</label><input type="text" id="i-cardId" value="JCCUT20160892"></div>
-        <div class="form-group"><label>姓名（自动计算拼音缩写并生成短ID）</label><input type="text" id="i-name" value="唐寒露"></div>
-        <div class="form-group"><label>学号（卡片展示完整学号，短ID取最后两位）</label><input type="text" id="i-stuId" value="2016211020208"></div>
+        <div class="form-group"><label>姓名</label><input type="text" id="i-name" value="唐海林"></div>
+        <div class="form-group"><label>学号</label><input type="text" id="i-stuId" value="2016211020208"></div>
         <div class="form-group"><label>院系</label><input type="text" id="i-department" value="经济与管理学院"></div>
         <div class="form-group"><label>专业</label><input type="text" id="i-major" value="财务管理"></div>
         <div class="form-group"><label>毕业年份</label><input type="text" id="i-gradYear" value="2020"></div>
         
-        <!-- 按钮 -->
-        <button class="random-badge-btn-block" onclick="generateRandomStuId()">🎲 随机专业与学号(2016-2020)</button>
-        <button class="panel-btn" style="background:#28a745; color:#fff;" onclick="generateStandaloneUrl()">🚀 生成并复制链接</button>
-        <button class="panel-btn" style="background:#5bc0de; color:#fff;" onclick="listAlumni()">📋 查看所有校友</button>
-        <button class="panel-btn" style="background:#d9534f; color:#fff;" onclick="deleteAlumni()">🗑️ 删除校友</button>
+        <button class="random-badge-btn-block" onclick="random()">🎲 随机专业与学号(2016-2020)</button>
+        <button class="panel-btn" style="background:#28a745; color:#fff;" onclick="generate()">🚀 生成并复制链接</button>
+        <button class="panel-btn" style="background:#5bc0de; color:#fff;" onclick="list()">📋 查看所有校友</button>
+        <button class="panel-btn" style="background:#d9534f; color:#fff;" onclick="del()">🗑️ 删除校友</button>
         <button class="panel-btn" style="background:#ff9f43; color:#fff;" onclick="resetDeviceLock()">🔓 重置设备锁</button>
         <button class="panel-btn" style="background:#444;" onclick="closePanel()">关闭控制台</button>
-
-        <!-- 使用说明书 -->
-        <div class="help-doc-box">
-            <h4>📖 使用指南</h4>
-            <ol>
-                <li>填写或随机生成校友信息，点击 <strong>"生成并复制"</strong>。</li>
-                <li>数据会自动保存到云端，链接已复制到剪贴板。</li>
-                <li>用生成的短链接（<span class="code-mark">?id=xxx</span>）即可访问该校友的电子卡片。</li>
-            </ol>
-            <h4>🔍 短ID计算规则</h4>
-            <ul>
-                <li><strong>公式：</strong> 姓名拼音首字母缩写 + 学号最后两位。</li>
-                <li>示例：唐寒露 → <span class="code-mark">thl</span>，学号尾号 <span class="code-mark">08</span> → 最终短ID：<span class="code-mark">thl08</span></li>
-                <li>卡片上依然显示完整的原始学号，不影响美观。</li>
-            </ul>
-        </div>
     </div>
 
-    <!-- 引入脚本文件（script.js） -->
     <script src="script.js"></script>
 </body>
 </html>
