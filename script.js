@@ -1,6 +1,6 @@
 /* ==========================================
-   荆楚理工学院 移动校园 - 最终修复版
-   修复：查看所有校友直接使用 KEYS，彻底解决列表为空问题
+   荆楚理工学院 移动校园 - 表格列表版
+   列表展示：表格化、每行带删除按钮、直观美观
    ========================================== */
 
 'use strict';
@@ -98,11 +98,13 @@ const ADMIN_PANEL_HTML = `
         <div class="form-group"><label>毕业年份</label><input type="text" id="i-gradYear" value="2020" inputmode="numeric"></div>
         <button class="random-badge-btn-block" onclick="window.random()">🎲 随机专业与学号(2016-2020)</button>
         <button class="panel-btn" style="background:#28a745;" onclick="window.generate()">🚀 生成并复制链接</button>
-        <button class="panel-btn" style="background:#17a2b8;" onclick="window.list(true)">🔄 强制刷新列表</button>
-        <button class="panel-btn" style="background:#5bc0de;" onclick="window.list(false)">📋 查看所有校友</button>
+        <button class="panel-btn" style="background:#17a2b8;" onclick="window.refreshAlumniList()">🔄 强制刷新列表</button>
+        <button class="panel-btn" style="background:#5bc0de;" onclick="window.list()">📋 查看所有校友</button>
         <button class="panel-btn" style="background:#d9534f;" onclick="window.del()">🗑️ 删除校友</button>
         <button class="panel-btn" style="background:#ff9f43;" onclick="window.resetDeviceLock()">🔓 重置设备锁</button>
         <button class="panel-btn" style="background:#444;" onclick="window.closePanel()">关闭控制台</button>
+        <!-- 校友列表容器（动态填充） -->
+        <div id="alumni-table-container" style="margin-top:20px; max-height:400px; overflow-y:auto; border-top:1px solid #444; padding-top:10px;"></div>
     </div>
 `;
 
@@ -432,42 +434,100 @@ async function generate() {
         currentUserId = shortId;
         isCardDataValid = true;
         showToast(`生成成功！短ID：${shortId}`);
+        // 刷新校友列表
+        if (document.getElementById('adminPanel')) {
+            await list();
+        }
     } catch (e) {
         console.error('生成保存失败', e);
         showToast(`保存失败：${e.message}`);
     }
 }
 
-// ------------------- 修复后的 list 函数 -------------------
-// 直接使用 KEYS 获取所有校友，彻底解决列表为空问题
+// 校友列表缓存
 const ALUMNI_CACHE_KEY = 'alumni_list_cache';
 const CACHE_TTL = 5 * 60 * 1000;
 
+// 在控制台内显示校友表格
+async function showAlumniTable(alumniList) {
+    const container = document.getElementById('alumni-table-container');
+    if (!container) return;
+    
+    if (!alumniList || alumniList.length === 0) {
+        container.innerHTML = '<div style="text-align:center;padding:20px;color:#aaa;">暂无校友数据</div>';
+        return;
+    }
+    
+    let html = `<table style="width:100%; border-collapse:collapse; color:#fff; font-size:13px;">
+        <thead>
+            <tr style="border-bottom:2px solid #555;">
+                <th style="padding:8px 4px; text-align:left;">状态</th>
+                <th style="padding:8px 4px; text-align:left;">姓名</th>
+                <th style="padding:8px 4px; text-align:left;">短ID</th>
+                <th style="padding:8px 4px; text-align:center;">操作</th>
+            </tr>
+        </thead>
+        <tbody>`;
+    for (const item of alumniList) {
+        const statusIcon = item.activated ? '🟢' : '🔴';
+        let displayName = item.name;
+        if (displayName.length === 2) displayName = displayName[0] + '　' + displayName[1];
+        html += `<tr style="border-bottom:1px solid #333;">
+            <td style="padding:6px 4px;">${statusIcon}</td>
+            <td style="padding:6px 4px;">${displayName}</td>
+            <td style="padding:6px 4px; font-family:monospace;">${item.id}</td>
+            <td style="padding:6px 4px; text-align:center;">
+                <button onclick="window.deleteAlumniById('${item.id}')" style="background:#d9534f; border:none; color:#fff; padding:2px 10px; border-radius:3px; cursor:pointer;">删除</button>
+            </td>
+        </tr>`;
+    }
+    html += `</tbody></table>`;
+    container.innerHTML = html;
+}
+
+// 删除校友（供表格按钮调用）
+window.deleteAlumniById = async function(id) {
+    const confirmed = await showConfirm(`确认删除校友 ${id} 吗？`, '警告');
+    if (!confirmed) return;
+    try {
+        await redis('DEL', `user:${id}`);
+        await redis('SREM', 'alumni:index', id);
+        localStorage.removeItem(ALUMNI_CACHE_KEY);
+        showToast(`${id} 已删除`);
+        // 刷新列表
+        await list();
+    } catch (e) {
+        showToast(`删除失败：${e.message}`);
+    }
+};
+
+// 强制刷新列表
+window.refreshAlumniList = async function() {
+    await list(true);
+};
+
 async function list(forceRefresh = false) {
     try {
-        // 如果不需要强制刷新且有缓存，直接使用缓存
         if (!forceRefresh) {
             const cached = localStorage.getItem(ALUMNI_CACHE_KEY);
             if (cached) {
                 const { data, timestamp } = JSON.parse(cached);
                 if (Date.now() - timestamp < CACHE_TTL) {
-                    showAlumniListDialog(data);
+                    await showAlumniTable(data);
                     return;
                 }
             }
         }
-
-        // 直接使用 KEYS 命令获取所有校友的 key
+        
+        showToast('正在加载校友列表...', 1000);
         const allKeys = await redis('KEYS', 'user:*');
         if (!allKeys || allKeys.length === 0) {
+            await showAlumniTable([]);
             showToast('暂无校友数据');
             return;
         }
-
-        // 提取短ID
+        
         const ids = allKeys.map(key => key.replace('user:', ''));
-
-        // 批量获取详情（每批 50 个，避免单次请求过大）
         const batchSize = 50;
         let alumniList = [];
         for (let i = 0; i < ids.length; i += batchSize) {
@@ -483,56 +543,16 @@ async function list(forceRefresh = false) {
                 });
             }
         }
-
-        // 按创建时间排序（可选，让新生成的排在前面）
-        // 由于 Redis 中没有存储创建时间索引，此处保持原顺序即可
-
-        // 存入缓存
+        
         localStorage.setItem(ALUMNI_CACHE_KEY, JSON.stringify({
             data: alumniList,
             timestamp: Date.now()
         }));
-
-        showAlumniListDialog(alumniList);
+        await showAlumniTable(alumniList);
     } catch (e) {
         console.error('列表加载失败', e);
         showToast(`加载失败：${e.message}`);
     }
-}
-
-// 校友列表对话框（排版优化）
-function showAlumniListDialog(alumniList) {
-    let msg = `共 ${alumniList.length} 位校友\n\n`;
-    alumniList.forEach(item => {
-        const dot = item.activated ? '🟢' : '🔴';
-        let name = item.name;
-        if (name.length === 2) {
-            name = name[0] + '　' + name[1];
-        }
-        msg += `${dot} ${name} · ${item.id}\n`;
-    });
-    msg += `\n点击【确定】可删除校友`;
-
-    showConfirm(msg, '校友列表').then(wantDelete => {
-        if (wantDelete) {
-            const id = prompt('输入要删除的短ID：');
-            if (id) {
-                showConfirm(`确认删除 ${id} ？`, '警告').then(async (confirmed) => {
-                    if (confirmed) {
-                        try {
-                            await redis('DEL', `user:${id}`);
-                            await redis('SREM', 'alumni:index', id);
-                            // 清除缓存，下次查看会重新加载
-                            localStorage.removeItem(ALUMNI_CACHE_KEY);
-                            showToast(`${id} 已删除`);
-                        } catch (e) {
-                            showToast(`删除失败：${e.message}`);
-                        }
-                    }
-                });
-            }
-        }
-    });
 }
 
 async function del() {
@@ -550,6 +570,7 @@ async function del() {
         await redis('SREM', 'alumni:index', id);
         localStorage.removeItem(ALUMNI_CACHE_KEY);
         showToast(`已删除`);
+        await list(); // 刷新表格
     } catch (e) {
         showToast(`删除失败：${e.message}`);
     }
@@ -588,6 +609,8 @@ if (gestureArea) {
                 DOM.iGradYear = document.getElementById('i-gradYear');
                 bindConsoleEvents();
                 updateUI();
+                // 自动加载校友列表
+                await list();
             } else if (pwd !== null) {
                 showToast('密码错误');
             }
