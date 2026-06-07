@@ -256,7 +256,7 @@ function showHome() {
 
 async function tryNavigateToCard() {
     if (!isCardDataValid) {
-        showToast('暂未识别到您的校友信息，请确认链接完整');
+        showToast('暂未识别到您的校友信息，请确认卡片已录入');
         return;
     }
     const uid = currentUserId;
@@ -276,7 +276,7 @@ async function tryNavigateToCard() {
             showCard();
             return;
         }
-        const ok = await showConfirm('点击"确定"后，此校友卡将与当前设备锁定绑定。', '欢迎使用校友卡');
+        const ok = await showConfirm('点击"确定"后，此校友卡将与当前设备锁定绑定，他人将无法使用。', '欢迎使用校友卡');
         if (ok) {
             userData.activated = true;
             userData.deviceId = deviceId;
