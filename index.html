@@ -216,7 +216,7 @@
         async function tryNavigateToCard() {
             // ✅ 首要判断：当前链接是否加载到了真实的校友数据
             if (!isCardDataValid) {
-                alert('此链接无效或校友信息未被收录，无法查看电子卡片。');
+                alert('校友信息未被收录，无法查看校友卡。');
                 return;
             }
 
@@ -231,7 +231,7 @@
             // 本地设备锁（可选，若未接后端则只靠本地）
             const key = `lock_device_${userId}`;
             if (!localStorage.getItem(key)) {
-                if (confirm("【首次打开安全激活】\n系统检测到这是您第一次在当前设备上访问该专属链接。\n\n⚠️ 设备安全绑定机制：\n点击确认后，本校友卡将与当前设备物理绑定，防止他人转发劫持盗刷。确认进行绑定吗？")) {
+                if (confirm("【首次打开安全激活】\n系统检测到这是您第一次在当前设备上访问该专属链接。\n\n⚠️ 设备安全绑定机制：\n点击确认后，本校友卡将与当前设备物理绑定，他人无法使用。确认进行绑定吗？")) {
                     localStorage.setItem(key, deviceId);
                     forceGoToCardPage();
                 }
