@@ -1,6 +1,6 @@
 /* ==========================================
-   荆楚理工学院 移动校园 - 最终极致版（含响应式数据绑定）
-   特性：Proxy 自动更新 UI、骨架屏、旋转动画、Canvas指纹、动态控制台
+   荆楚理工学院 移动校园 - 最终极致版（修复列表空白问题）
+   特性：Proxy 响应式、Canvas指纹、动态控制台、SCAN迭代、自动迁移旧数据
    ========================================== */
 
 'use strict';
@@ -18,7 +18,6 @@ const DOM = {
     vMajor: document.getElementById('v-major'),
     vGradYear: document.getElementById('v-gradYear'),
     liveClockBar: document.getElementById('live-clock-bar'),
-    // 控制台元素（动态注入后赋值）
     iCardId: null,
     iName: null,
     iStuId: null,
@@ -99,22 +98,26 @@ const ADMIN_PANEL_HTML = `
         <div class="form-group"><label>毕业年份</label><input type="text" id="i-gradYear" value="2020" inputmode="numeric"></div>
         <button class="random-badge-btn-block" onclick="window.random()">🎲 随机专业与学号(2016-2020)</button>
         <button class="panel-btn" style="background:#28a745;" onclick="window.generate()">🚀 生成并复制链接</button>
-        <button class="panel-btn" style="background:#5bc0de;" onclick="window.list()">📋 查看所有校友</button>
+        <button class="panel-btn" style="background:#17a2b8;" onclick="window.list(true)">🔄 强制刷新列表</button>
+        <button class="panel-btn" style="background:#5bc0de;" onclick="window.list(false)">📋 查看所有校友</button>
         <button class="panel-btn" style="background:#d9534f;" onclick="window.del()">🗑️ 删除校友</button>
         <button class="panel-btn" style="background:#ff9f43;" onclick="window.resetDeviceLock()">🔓 重置设备锁</button>
         <button class="panel-btn" style="background:#444;" onclick="window.closePanel()">关闭控制台</button>
     </div>
 `;
 
-let lastRequestTime = 0;
-const MIN_REQUEST_INTERVAL = 500;
+let lastWriteTime = 0;
+const MIN_WRITE_INTERVAL = 500;
 
 async function redis(command, ...args) {
-    const now = Date.now();
-    if (now - lastRequestTime < MIN_REQUEST_INTERVAL) {
-        throw new Error('操作过于频繁，请稍后再试');
+    const writeCommands = ['SET', 'DEL', 'SADD', 'SREM'];
+    if (writeCommands.includes(command.toUpperCase())) {
+        const now = Date.now();
+        if (now - lastWriteTime < MIN_WRITE_INTERVAL) {
+            throw new Error('操作过于频繁，请稍后再试');
+        }
+        lastWriteTime = now;
     }
-    lastRequestTime = now;
     const url = `${UPSTASH_URL}/${command}/${args.join('/')}`;
     const resp = await fetch(url, {
         headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` }
@@ -141,7 +144,6 @@ const firstNames = ["张","李","王","刘","陈","杨","赵","黄","周","吴",
 const lastNames = ["逸飞","梦溪","泽宇","梓涵","听风","晓静","嘉杰","雨桐","博远","子墨","瑞霖","思源","楚菁","雪珂","寒潞"];
 
 // ------------------- 6. 响应式数据（Proxy） -------------------
-// 原始数据对象
 const rawConfig = {
     cardId: "--------",
     name: "--",
@@ -151,7 +153,6 @@ const rawConfig = {
     gradYear: "--"
 };
 
-// 定义更新 UI 的函数（不依赖手动调用）
 function updateUI() {
     if (DOM.vCardId) DOM.vCardId.innerText = rawConfig.cardId;
     if (DOM.vName) DOM.vName.innerText = rawConfig.name;
@@ -159,7 +160,6 @@ function updateUI() {
     if (DOM.vDepartment) DOM.vDepartment.innerText = rawConfig.department;
     if (DOM.vMajor) DOM.vMajor.innerText = rawConfig.major;
     if (DOM.vGradYear) DOM.vGradYear.innerText = rawConfig.gradYear;
-    // 如果控制台已注入，同步表单
     if (DOM.iCardId) {
         DOM.iCardId.value = rawConfig.cardId === "--------" ? "" : rawConfig.cardId;
         DOM.iName.value = rawConfig.name === "--" ? "" : rawConfig.name;
@@ -170,21 +170,13 @@ function updateUI() {
     }
 }
 
-// 创建代理，拦截属性修改并自动刷新 UI
 const reactiveConfig = new Proxy(rawConfig, {
     set(target, prop, value) {
         target[prop] = value;
-        updateUI();  // 任何属性变化都自动重新渲染
+        updateUI();
         return true;
     }
 });
-
-// 批量更新时避免频繁触发 UI（例如 load 时一次设置多个字段）
-function batchUpdate(callback) {
-    // 暂时解除代理（直接修改 rawConfig），或者使用防抖，这里简单起见允许多次触发，性能影响不大
-    callback();
-    updateUI(); // 最后保证一次刷新
-}
 
 // ------------------- 7. 拼音首字母 -------------------
 function getChinesePinyinInitials(str) {
@@ -274,7 +266,7 @@ function showHome() {
 
 async function tryNavigateToCard() {
     if (!isCardDataValid) {
-        showToast('暂未识别到您的校友信息。');
+        showToast('暂未识别到您的校友信息，请确认链接完整');
         return;
     }
     const uid = currentUserId;
@@ -288,13 +280,13 @@ async function tryNavigateToCard() {
         const userData = JSON.parse(raw);
         if (userData.activated) {
             if (userData.deviceId !== deviceId) {
-                showToast('设备验证失败，该校友卡已在其他设备激活绑定');
+                showToast('设备验证失败，该校友卡已在其他设备绑定');
                 return;
             }
             showCard();
             return;
         }
-        const ok = await showConfirm('这是您首次在此设备上打开该链接点击"确定"后，此校友卡将与当前设备锁定绑定。', '欢迎使用校友卡');
+        const ok = await showConfirm('点击"确定"后，此校友卡将与当前设备锁定绑定。', '欢迎使用校友卡');
         if (ok) {
             userData.activated = true;
             userData.deviceId = deviceId;
@@ -327,7 +319,7 @@ async function resetDeviceLock() {
     closePanel();
 }
 
-// ------------------- 10. 加载链接数据（使用响应式） -------------------
+// ------------------- 10. 加载链接数据 -------------------
 let currentUserId = "";
 let isCardDataValid = false;
 
@@ -336,12 +328,11 @@ async function load() {
     const id = params.get('id');
     if (!id) return;
     currentUserId = id;
-    showSkeleton(true); // 显示骨架屏
+    showSkeleton(true);
     try {
         const raw = await redis('GET', `user:${id}`);
         if (raw) {
             const u = JSON.parse(raw);
-            // 批量更新数据（触发响应式，但会多次更新UI，性能可接受）
             reactiveConfig.cardId = u.cardId || "";
             reactiveConfig.name = u.name || "--";
             reactiveConfig.stuId = u.stuId || "--";
@@ -351,7 +342,6 @@ async function load() {
             isCardDataValid = true;
         } else {
             isCardDataValid = false;
-            // 清空占位数据
             reactiveConfig.cardId = "--------";
             reactiveConfig.name = "--";
             reactiveConfig.stuId = "--";
@@ -363,12 +353,11 @@ async function load() {
         console.error(e);
         isCardDataValid = false;
     } finally {
-        showSkeleton(false); // 隐藏骨架屏
+        showSkeleton(false);
     }
 }
 
 // ------------------- 11. 控制台功能 -------------------
-// 随机生成（直接操作控制台输入框，但为了响应式，应该修改 reactiveConfig？不，这里只填充表单，不改变当前显示的卡片）
 function random() {
     const y = Math.floor(Math.random() * 5) + 2016;
     const m = jcMajorDatabase[Math.floor(Math.random() * jcMajorDatabase.length)];
@@ -431,7 +420,6 @@ async function generate() {
             activated: false, deviceId: null, createdAt: Date.now()
         }));
         await redis('SADD', 'alumni:index', shortId);
-        // 更新当前显示的数据（响应式）
         reactiveConfig.cardId = cardId;
         reactiveConfig.name = name;
         reactiveConfig.stuId = stuId;
@@ -446,53 +434,113 @@ async function generate() {
     }
 }
 
-// 使用 SSCAN 迭代
-async function getAllAlumniIds() {
-    let cursor = '0';
-    let ids = [];
-    do {
-        const [nextCursor, members] = await redis('SSCAN', 'alumni:index', cursor, 'COUNT', 100);
-        ids.push(...members);
-        cursor = nextCursor;
-    } while (cursor !== '0');
-    return ids;
+// ---------- 修复列表：兼容旧数据，自动重建索引 ----------
+async function rebuildIndexIfNeeded() {
+    // 检查索引集合是否为空
+    const [_, members] = await redis('SSCAN', 'alumni:index', '0', 'COUNT', '1');
+    if (members && members.length > 0) return; // 已有数据，无需重建
+    
+    showToast('检测到旧数据，正在重建索引...', 3000);
+    // 使用 KEYS 扫描所有 user:* （一次性迁移，数据量大时可能慢，但仅执行一次）
+    const keys = await redis('KEYS', 'user:*');
+    if (!keys || keys.length === 0) return;
+    for (const key of keys) {
+        const id = key.replace('user:', '');
+        await redis('SADD', 'alumni:index', id);
+    }
+    showToast(`索引重建完成，共导入 ${keys.length} 位校友`);
 }
 
-async function list() {
+const ALUMNI_CACHE_KEY = 'alumni_list_cache';
+const CACHE_TTL = 5 * 60 * 1000;
+
+async function list(forceRefresh = false) {
     try {
-        const ids = await getAllAlumniIds();
+        // 先尝试重建索引（兼容旧数据）
+        await rebuildIndexIfNeeded();
+        
+        if (!forceRefresh) {
+            const cached = localStorage.getItem(ALUMNI_CACHE_KEY);
+            if (cached) {
+                const { data, timestamp } = JSON.parse(cached);
+                if (Date.now() - timestamp < CACHE_TTL) {
+                    showAlumniListDialog(data);
+                    return;
+                }
+            }
+        }
+        
+        let cursor = '0';
+        let ids = [];
+        do {
+            const [nextCursor, members] = await redis('SSCAN', 'alumni:index', cursor, 'COUNT', 500);
+            ids.push(...members);
+            cursor = nextCursor;
+        } while (cursor !== '0');
+        
         if (!ids || ids.length === 0) {
             showToast('暂无校友数据');
             return;
         }
-        const batchSize = 50;
+        
+        const batchSize = 100;
         let allUsers = [];
         for (let i = 0; i < ids.length; i += batchSize) {
             const batch = ids.slice(i, i + batchSize);
-            const vals = await redis('MGET', ...batch.map(id => `user:${id}`));
+            const userKeys = batch.map(id => `user:${id}`);
+            const vals = await redis('MGET', ...userKeys);
             allUsers.push(...vals);
         }
-        let msg = `共 ${ids.length} 位校友\n\n`;
-        ids.forEach((id, idx) => {
+        
+        const alumniList = ids.map((id, idx) => {
             const u = JSON.parse(allUsers[idx] || '{}');
-            const dot = u.activated ? '🟢' : '🔴';
-            let name = u.name || '?';
-            if (name.length === 2) name = name[0] + '　' + name[1];
-            msg += `${dot} ${name} · ${id}\n`;
+            return {
+                id: id,
+                name: u.name || '?',
+                activated: u.activated || false
+            };
         });
-        msg += `\n点击确定可输入ID删除`;
-        const wantDelete = await showConfirm(msg, '校友列表');
-        if (wantDelete) {
-            const id = prompt('输入要删除的短ID：');
-            if (id && await showConfirm(`确认删除 ${id} ？`, '警告')) {
-                await redis('DEL', `user:${id}`);
-                await redis('SREM', 'alumni:index', id);
-                showToast(`${id} 已删除`);
-            }
-        }
+        
+        localStorage.setItem(ALUMNI_CACHE_KEY, JSON.stringify({
+            data: alumniList,
+            timestamp: Date.now()
+        }));
+        
+        showAlumniListDialog(alumniList);
     } catch (e) {
         showToast(`加载失败：${e.message}`);
     }
+}
+
+function showAlumniListDialog(alumniList) {
+    let msg = `共 ${alumniList.length} 位校友\n\n`;
+    alumniList.forEach(item => {
+        const dot = item.activated ? '🟢' : '🔴';
+        let name = item.name;
+        if (name.length === 2) name = name[0] + '　' + name[1];
+        msg += `${dot} ${name} · ${item.id}\n`;
+    });
+    msg += `\n点击【确定】可输入ID删除`;
+    
+    showConfirm(msg, '校友列表').then(wantDelete => {
+        if (wantDelete) {
+            const id = prompt('输入要删除的短ID：');
+            if (id) {
+                showConfirm(`确认删除 ${id} ？`, '警告').then(async (confirmed) => {
+                    if (confirmed) {
+                        try {
+                            await redis('DEL', `user:${id}`);
+                            await redis('SREM', 'alumni:index', id);
+                            localStorage.removeItem(ALUMNI_CACHE_KEY);
+                            showToast(`${id} 已删除`);
+                        } catch (e) {
+                            showToast(`删除失败：${e.message}`);
+                        }
+                    }
+                });
+            }
+        }
+    });
 }
 
 async function del() {
@@ -508,6 +556,7 @@ async function del() {
         }
         await redis('DEL', `user:${id}`);
         await redis('SREM', 'alumni:index', id);
+        localStorage.removeItem(ALUMNI_CACHE_KEY);
         showToast(`已删除`);
     } catch (e) {
         showToast(`删除失败：${e.message}`);
@@ -520,7 +569,6 @@ function closePanel() {
     DOM.iCardId = DOM.iName = DOM.iStuId = DOM.iDepartment = DOM.iMajor = DOM.iGradYear = null;
 }
 
-// 控制台表单双向绑定：当控制台注入后，监听输入事件同步到 reactiveConfig
 function bindConsoleEvents() {
     if (!DOM.iName) return;
     DOM.iCardId.addEventListener('input', (e) => { reactiveConfig.cardId = e.target.value; });
@@ -531,7 +579,7 @@ function bindConsoleEvents() {
     DOM.iGradYear.addEventListener('input', (e) => { reactiveConfig.gradYear = e.target.value; });
 }
 
-// ------------------- 12. 三指手势打开控制台（动态注入） -------------------
+// ------------------- 12. 三指手势打开控制台 -------------------
 const gestureArea = document.getElementById('gestureArea');
 if (gestureArea) {
     gestureArea.addEventListener('touchstart', async (e) => {
@@ -540,7 +588,6 @@ if (gestureArea) {
             const pwd = prompt('🔐 请输入控制台密码：');
             if (pwd === CONTROL_PASSWORD) {
                 document.body.insertAdjacentHTML('beforeend', ADMIN_PANEL_HTML);
-                // 重新获取控制台 DOM 元素并绑定事件
                 DOM.iCardId = document.getElementById('i-cardId');
                 DOM.iName = document.getElementById('i-name');
                 DOM.iStuId = document.getElementById('i-stuId');
@@ -548,7 +595,6 @@ if (gestureArea) {
                 DOM.iMajor = document.getElementById('i-major');
                 DOM.iGradYear = document.getElementById('i-gradYear');
                 bindConsoleEvents();
-                // 同步当前数据显示到表单
                 updateUI();
             } else if (pwd !== null) {
                 showToast('密码错误');
@@ -557,14 +603,13 @@ if (gestureArea) {
     });
 }
 
-// ------------------- 13. 北京时间时钟 + 刷新按钮旋转动画 -------------------
+// ------------------- 13. 北京时间时钟 + 刷新按钮旋转 -------------------
 function updateClock() {
     const now = new Date();
     const beijing = new Date(now.getTime() + now.getTimezoneOffset() * 60000 + 28800000);
     const str = `${beijing.getFullYear()}年${String(beijing.getMonth()+1).padStart(2,'0')}月${String(beijing.getDate()).padStart(2,'0')}日 ${String(beijing.getHours()).padStart(2,'0')}:${String(beijing.getMinutes()).padStart(2,'0')}:${String(beijing.getSeconds()).padStart(2,'0')}`;
     if (DOM.liveClockBar) DOM.liveClockBar.innerText = `当前时间：${str}`;
 }
-
 function triggerManualRefresh() {
     const refreshBtn = document.querySelector('.refresh-lnk');
     if (refreshBtn) {
@@ -580,7 +625,6 @@ load();
 updateClock();
 setInterval(updateClock, 1000);
 
-// 暴露全局函数供内联事件调用
 window.showHome = showHome;
 window.tryNavigateToCard = tryNavigateToCard;
 window.triggerManualRefresh = triggerManualRefresh;
