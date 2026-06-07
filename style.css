@@ -13,7 +13,7 @@
 
 /* 背景色：整个页面的底色，改成灰色系 */
 body {
-    background-color: #EDEBE9;          /* 浅灰背景，可改为其他颜色如 #f0f0f0 */
+    background-color: #EDEBE9;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -21,11 +21,11 @@ body {
     position: relative;
 }
 
-/* 模拟微信小程序的容器，最大宽度 414px（iPhone 11 Pro Max 宽度） */
+/* 模拟微信小程序的容器，最大宽度 414px */
 .wx-container {
     width: 100%;
-    max-width: 414px;                   /* 如果想让卡片更宽，可以改大这个值 */
-    background-color: #F7F7F7;          /* 容器背景，可改为纯白 #FFFFFF */
+    max-width: 414px;
+    background-color: #F7F7F7;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -33,22 +33,20 @@ body {
     position: relative;
 }
 
-/* ---------- 顶部导航栏（优化间距 + 内容靠下） ---------- */
+/* ---------- 顶部导航栏（内容垂直居中 2/4处） ---------- */
 .wx-nav {
     width: 100%;
-    /* 基础顶部内边距12px，同时适配刘海屏（取较大值） */
     padding-top: max(12px, env(safe-area-inset-top, 12px));
     height: calc(48px + max(12px, env(safe-area-inset-top, 12px)));
     display: flex;
-    align-items: flex-end;              /* 底部对齐，使内容靠下 */
+    align-items: center;              /* 垂直居中 */
     justify-content: space-between;
     padding-left: 16px;
     padding-right: 16px;
-    padding-bottom: 8px;               /* 与底部的距离（下方1/4处效果） */
-    color: #FFF;                        /* 导航栏文字颜色 */
+    color: #FFF;
     font-size: 16px;
     font-weight: bold;
-    background-color: #A82E2E;          /* 导航栏背景色（深红），可改主题色 */
+    background-color: #A82E2E;
     position: relative;
     z-index: 100;
 }
@@ -73,7 +71,7 @@ body {
     transform: translateX(-50%);
     width: 100%;
     max-width: 414px;
-    height: calc(48px + max(12px, env(safe-area-inset-top, 12px))); /* 与导航栏高度一致 */
+    height: calc(48px + max(12px, env(safe-area-inset-top, 12px)));
     cursor: pointer;
     z-index: 99999;
     -webkit-user-select: none;
@@ -88,24 +86,23 @@ body {
     display: flex;
     flex-direction: column;
     position: relative;
-    background: #FFF;                   /* 首页背景白色 */
-    min-height: calc(100vh - 48px - max(12px, env(safe-area-inset-top, 12px))); /* 适配导航栏高度 */
+    background: #FFF;
+    min-height: calc(100vh - 48px - max(12px, env(safe-area-inset-top, 12px)));
     padding-bottom: 80px;
 }
 
 .home-mock-bg {
     width: 100%;
     display: block;
-    object-fit: contain;               /* 保持图片比例完整显示 */
+    object-fit: contain;
 }
 
-/* 首页上那个透明的点击热区（位置和大小可调） */
 .hotspot-alumni-card {
     position: absolute;
-    top: 35%;                          /* 距顶部 35% 的位置 */
-    left: 25%;                         /* 距左边 25% 的位置 */
-    width: 20%;                        /* 宽度占容器 20% */
-    height: 15%;                       /* 高度占容器 15% */
+    top: 35%;
+    left: 25%;
+    width: 20%;
+    height: 15%;
     cursor: pointer;
     z-index: 50;
     -webkit-tap-highlight-color: transparent;
@@ -114,17 +111,16 @@ body {
 /* ---------- 校友卡页面 ---------- */
 #page-card {
     width: 100%;
-    display: none;                     /* 默认隐藏，点击热区后显示 */
+    display: none;
     flex-direction: column;
     align-items: center;
 }
 
-/* 校友卡主卡片 */
 .alumni-card {
-    width: calc(100% - 24px);          /* 左右各留 12px 边距 */
-    height: 220px;                     /* 卡片高度，可调整 */
-    background-color: #BD262A;         /* 卡片底色（红） */
-    background-image: url('card-bg.png'); /* 卡片背景图，可替换为其他图片 */
+    width: calc(100% - 24px);
+    height: 220px;
+    background-color: #BD262A;
+    background-image: url('card-bg.png');
     background-size: 100% 100%;
     background-repeat: no-repeat;
     border-radius: 12px;
@@ -137,10 +133,9 @@ body {
 .card-top-area {
     position: relative;
     width: 100%;
-    height: calc(100% - 38px);         /* 留出底部金色横条的空间 */
+    height: calc(100% - 38px);
 }
 
-/* 右上角卡号 */
 .card-serial {
     position: absolute;
     top: 16px;
@@ -152,11 +147,10 @@ body {
     letter-spacing: 0.5px;
 }
 
-/* 信息字段组 */
 .info-fields {
     position: absolute;
     top: 26px;
-    left: 109px;                       /* 可根据背景图调整字段起始位置 */
+    left: 109px;
     display: flex;
     flex-direction: column;
     gap: 2.5px;
@@ -188,7 +182,6 @@ body {
     letter-spacing: 0.5px;
 }
 
-/* 卡片底部金色装饰条 */
 .card-gold-strip {
     height: 38px;
     width: 100%;
@@ -199,7 +192,7 @@ body {
     align-items: center;
     padding-left: 20px;
     font-size: 11px;
-    color: #8A1A1D;                    /* 金色文字色 */
+    color: #8A1A1D;
     font-weight: bold;
     letter-spacing: 0.8px;
 }
@@ -254,11 +247,10 @@ body {
     user-select: none;
 }
 
-/* 北京时间显示栏 */
 .live-timer-container {
     width: 100%;
-    background-color: #5C1315;         /* 深红背景 */
-    color: #FFFFFF;                    /* 白色文字 */
+    background-color: #5C1315;
+    color: #FFFFFF;
     text-align: center;
     padding: 13px 0;
     border-radius: 16px;
@@ -270,13 +262,13 @@ body {
 
 /* ---------- 控制台面板 ---------- */
 .admin-panel {
-    display: none;                     /* 默认隐藏 */
+    display: none;
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.96);     /* 半透明黑色背景 */
+    background: rgba(0,0,0,0.96);
     z-index: 100000;
     padding: 20px;
     color: #fff;
@@ -284,7 +276,7 @@ body {
 }
 
 .admin-panel.active {
-    display: block;                    /* 激活时显示 */
+    display: block;
 }
 
 .admin-panel-header {
@@ -294,7 +286,6 @@ body {
     margin-bottom: 10px;
 }
 
-/* 表单输入框 */
 .form-group {
     margin-bottom: 12px;
 }
@@ -317,11 +308,10 @@ body {
     outline: none;
 }
 
-/* 通用按钮样式 */
 .panel-btn {
     width: 100%;
     height: 44px;
-    background: #C9262B;               /* 红色按钮 */
+    background: #C9262B;
     color: #fff;
     border: none;
     border-radius: 4px;
@@ -344,7 +334,6 @@ body {
     cursor: pointer;
 }
 
-/* 使用说明书盒子 */
 .help-doc-box {
     background: rgba(255, 255, 255, 0.08);
     border: 1px dashed rgba(255, 255, 255, 0.2);
