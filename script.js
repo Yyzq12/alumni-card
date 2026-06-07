@@ -339,9 +339,11 @@ function random() {
 
 /**
  * 【🚀 生成并复制链接】功能
- * iOS 兼容版：弹窗确认后同步复制
+ * 将表单中的校友信息保存到云端，生成专属短链接
+ * 弹窗显示链接，用户长按即可复制（iOS/Android/微信通用）
  */
 async function generate() {
+    // 读取表单数据
     const c = {
         cardId: document.getElementById('i-cardId').value.trim(),
         name: document.getElementById('i-name').value.trim(),
@@ -351,15 +353,17 @@ async function generate() {
         gradYear: document.getElementById('i-gradYear').value.trim()
     };
 
+    // 校验
     if (!c.name || !c.stuId) {
         alert('⚠️ 姓名和学号不能为空！');
         return;
     }
 
+    // 计算短ID和链接
     const id = getChinesePinyinInitials(c.name) + c.stuId.slice(-2);
     const url = window.location.origin + window.location.pathname.replace(/\/$/, '') + '?id=' + id;
 
-    // 先检查短ID是否已存在
+    // 检查是否已存在
     try {
         const exists = await redis('EXISTS', `user:${id}`);
         if (exists) {
@@ -371,57 +375,30 @@ async function generate() {
         return;
     }
 
-    // iOS 兼容方案：弹窗让用户点确认，此时才执行复制
-    if (confirm(`即将生成校友卡：\n\n姓名：${c.name}\n学号：${c.stuId}\n短ID：${id}\n\n点击"确定"复制链接并保存`)) {
-        // 先复制链接（在用户点击确认的同步上下文中）
-        let copied = false;
-        try {
-            const ta = document.createElement('textarea');
-            ta.value = url;
-            ta.style.position = 'fixed';
-            ta.style.left = '-9999px';
-            ta.style.top = '-9999px';
-            document.body.appendChild(ta);
-            ta.focus();
-            ta.select();
-            document.execCommand('copy');
-            document.body.removeChild(ta);
-            copied = true;
-        } catch (e) {}
+    // 保存到云端
+    try {
+        await redis('SET', `user:${id}`, JSON.stringify({
+            ...c,
+            activated: false,
+            deviceId: null,
+            createdAt: Date.now()
+        }));
 
-        if (!copied) {
-            try {
-                await navigator.clipboard.writeText(url);
-                copied = true;
-            } catch (e) {}
-        }
+        // 更新本地预览
+        currentConfig = c;
+        currentUserId = id;
+        isCardDataValid = true;
+        render();
 
-        // 保存到云端
-        try {
-            await redis('SET', `user:${id}`, JSON.stringify({
-                ...c,
-                activated: false,
-                deviceId: null,
-                createdAt: Date.now()
-            }));
-
-            currentConfig = c;
-            currentUserId = id;
-            isCardDataValid = true;
-            render();
-
-            if (copied) {
-                alert(`🎉 生成成功！\n\n短ID：${id}\n链接已复制到剪贴板。`);
-            } else {
-                prompt('生成成功！\n\n请手动复制以下链接：', url);
-            }
-        } catch (e) {
-            if (copied) {
-                alert('⚠️ 云端保存失败，但链接已复制到剪贴板。\n\n错误：' + e.message);
-            } else {
-                alert('❌ 操作失败：' + e.message);
-            }
-        }
+        // 🔧 弹窗显示链接，用户长按即可复制
+        prompt(
+            '🎉 生成成功！\n\n' +
+            '短ID：' + id + '\n\n' +
+            '👉 长按下方链接即可复制：',
+            url
+        );
+    } catch (e) {
+        alert('❌ 保存失败：' + e.message);
     }
 }
 
