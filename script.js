@@ -6,9 +6,8 @@
 const CONTROL_PASSWORD = "5499";
 
 const UPSTASH_URL = "https://social-escargot-66261.upstash.io";
-const UPSTASH_TOKEN = "gQAAAAAAAQLVAAIgcDJmYzU1YjliNjUwZTI0ZDZhYWY3ODhiZDlkYzRkNTk1ZA";
+const UPSTASH_TOKEN = "gQAAAAAAAQLVAAIgcDI5OWQ3MGRjY2FjMWE0ZGZhYWQ5NjhiZDYzZDQwMzMwZQ";
 
-// 🔧 修复：优化 Redis 调用函数
 async function redis(command, ...args) {
     const url = `${UPSTASH_URL}/${command}/${args.join('/')}`;
     try {
@@ -208,11 +207,9 @@ async function parseUrlParams() {
     if (!id) return;
 
     currentUserId = id;
-    console.log('正在加载校友，id:', id);
 
     try {
         const raw = await redis('GET', `user:${id}`);
-        console.log('Redis 返回:', raw);
 
         if (raw) {
             const u = JSON.parse(raw);
@@ -227,14 +224,11 @@ async function parseUrlParams() {
             isCardDataValid = true;
             renderDomData();
             syncConfigToInputs();
-            console.log('✅ 加载成功:', currentConfig.name);
         } else {
-            console.warn('⚠️ 未找到:', id);
             currentConfig = { cardId: "--------", name: "--", stuId: "--", department: "--", major: "--", gradYear: "--" };
             renderDomData();
         }
     } catch (e) {
-        console.error('❌ 加载失败:', e);
         currentConfig = { cardId: "--------", name: "--", stuId: "--", department: "--", major: "--", gradYear: "--" };
         renderDomData();
     }
