@@ -1,5 +1,5 @@
 /* ==========================================
-   荆楚理工学院 移动校园 - 基础版（表格增加复制链接按钮）
+   荆楚理工学院 移动校园 - 基础版（表格优化：复制按钮文字、列宽调整）
    包含：Canvas指纹、动态控制台、校友列表（排序、复制链接、删除确认）
    ========================================== */
 
@@ -462,7 +462,7 @@ async function generate() {
     })();
 }
 
-// ------------------- 校友表格（增加复制链接列） -------------------
+// ------------------- 校友表格（优化列宽：姓名足够3字，专业减少，复制按钮文字为“复制”） -------------------
 const ALUMNI_CACHE_KEY = 'alumni_list_cache';
 const CACHE_TTL = 5 * 60 * 1000;
 
@@ -522,15 +522,15 @@ async function loadAlumniTable(forceRefresh = false) {
             return;
         }
         
-        // 列宽调整：状态10%、姓名12%、短ID12%、专业36%、链接15%、删除15%
+        // 优化列宽：状态8%、姓名18%（保证三个汉字）、短ID12%、专业32%、复制15%、删除15%
         let html = `<table style="width:100%; border-collapse:collapse; color:#fff; font-size:13px;">
             <thead>
                 <tr style="border-bottom:2px solid #555;">
-                    <th style="padding:8px 4px; text-align:left; width:10%;">状态</th>
-                    <th style="padding:8px 4px; text-align:left; width:12%;">姓名</th>
+                    <th style="padding:8px 4px; text-align:left; width:8%;">状态</th>
+                    <th style="padding:8px 4px; text-align:left; width:18%;">姓名</th>
                     <th style="padding:8px 4px; text-align:left; width:12%;">短ID</th>
-                    <th style="padding:8px 4px; text-align:left; width:36%;">专业</th>
-                    <th style="padding:8px 4px; text-align:center; width:15%;">链接</th>
+                    <th style="padding:8px 4px; text-align:left; width:37%;">专业</th>
+                    <th style="padding:8px 4px; text-align:center; width:10%;">🔗</th>
                     <th style="padding:8px 4px; text-align:center; width:15%;">删除</th>
                 </tr>
             </thead>
@@ -545,7 +545,7 @@ async function loadAlumniTable(forceRefresh = false) {
                 <td style="padding:6px 4px; font-family:monospace;">${item.id}</td>
                 <td style="padding:6px 4px;">${escapeHtml(item.major)}</td>
                 <td style="padding:6px 4px; text-align:center;">
-                    <button onclick="window.copyAlumniLink('${item.id}')" style="background:#17a2b8; border:none; color:#fff; padding:2px 8px; border-radius:3px; cursor:pointer;">复制链接</button>
+                    <button onclick="window.copyAlumniLink('${item.id}')" style="background:#17a2b8; border:none; color:#fff; padding:2px 8px; border-radius:3px; cursor:pointer;">复制</button>
                 </td>
                 <td style="padding:6px 4px; text-align:center;">
                     <button onclick="window.deleteAlumniById('${item.id}')" style="background:#d9534f; border:none; color:#fff; padding:2px 8px; border-radius:3px; cursor:pointer;">删除</button>
