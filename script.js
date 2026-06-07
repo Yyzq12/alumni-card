@@ -182,7 +182,7 @@ function showHome() {
 async function tryNavigateToCard() {
     // 检查数据是否有效
     if (!isCardDataValid) {
-        alert('链接无效，数据未加载。\n\n请确认链接是否正确，或联系管理员。');
+        alert('暂未识别到您的校友信息\n\n请确认链接是否正确。');
         return;
     }
 
