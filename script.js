@@ -663,7 +663,7 @@ function triggerManualRefresh() {
         timerBar.classList.add('live-timer-flash');
         setTimeout(() => {
             timerBar.classList.remove('live-timer-flash');
-        }, 100);
+        }, 50);
     }
 }
 
