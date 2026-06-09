@@ -657,8 +657,7 @@ function triggerManualRefresh() {
             icon.classList.remove('rotating');
         }, 500);
     }
-    updateClock();  // 更新时间
-
+    updateClock();
     const timerBar = document.getElementById('live-clock-bar');
     if (timerBar) {
         timerBar.classList.add('live-timer-flash');
@@ -667,16 +666,6 @@ function triggerManualRefresh() {
         }, 200);
     }
 }
-    // 时间栏闪烁效果
-    const timerBar = document.getElementById('live-clock-bar');
-    if (timerBar) {
-        timerBar.classList.add('live-timer-flash');
-        setTimeout(() => {
-            timerBar.classList.remove('live-timer-flash');
-        }, 200);  // 闪烁持续200毫秒
-    }
-}
-
 
 // ------------------- 14. 启动 -------------------
 showHome();
