@@ -645,13 +645,27 @@ function updateClock() {
     if (DOM.liveClockBar) DOM.liveClockBar.innerText = `当前时间：${str}`;
 }
 function triggerManualRefresh() {
-    const refreshBtn = document.querySelector('.refresh-lnk');
-    if (refreshBtn) {
-        refreshBtn.classList.add('rotating');
-        setTimeout(() => refreshBtn.classList.remove('rotating'), 500);
-    }
-    updateClock();
+    // 获取图标元素（注意选择器变化）
+    const icon = document.querySelector('.refresh-icon');
+    
+    // 移除旧动画类，确保重复点击有效
+    icon.classList.remove('rotating');
+    
+    // 强制重绘，确保动画重新触发
+    void icon.offsetWidth;
+    
+    // 添加动画类
+    icon.classList.add('rotating');
+    
+    // 你的其他刷新逻辑（如更新时间、请求二维码等）
+    console.log("执行刷新中...");
+    
+    // 500ms 后移除动画类
+    setTimeout(() => {
+        icon.classList.remove('rotating');
+    }, 500);
 }
+
 
 // ------------------- 14. 启动 -------------------
 showHome();
