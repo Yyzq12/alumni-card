@@ -143,7 +143,7 @@ body {
     color: var(--white) !important;
     white-space: nowrap;
     transition: all 0.2s;
-    letter-spacing: -2px;   /* 添加此行，缩小字符间距 */
+    letter-spacing: -5px;   /* 添加此行，缩小字符间距 */
 }
 /* 骨架屏 */
 .skeleton {
