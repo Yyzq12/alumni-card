@@ -139,11 +139,11 @@ body {
     white-space: nowrap;
 }
 .info.info-value {
-    font-size: 13px;
+    font-size: 14.5px;
     color: var(--white) !important;
     white-space: nowrap;
     transition: all 0.2s;
-    letter-spacing: -0.5px;   /* 添加此行，缩小字符间距 */
+    letter-spacing: -2px;   /* 添加此行，缩小字符间距 */
 }
 /* 骨架屏 */
 .skeleton {
