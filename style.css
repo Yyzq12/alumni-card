@@ -202,6 +202,7 @@ body {
     max-width: 100%;
     max-height: 100%;
 }
+/* 容器样式保持不变 */
 .refresh-lnk {
     margin-top: 14px;
     color: #999;
@@ -210,15 +211,31 @@ body {
     display: inline-flex;
     align-items: center;
     gap: 4px;
+    transition: opacity 0.2s;
+    user-select: none;
+}
+
+/* 按钮点击反馈 */
+.refresh-lnk:active {
+    opacity: 0.6;
+}
+
+/* 关键：图标独立样式 */
+.refresh-icon {
+    display: inline-block;
     transition: transform 0.2s;
 }
-.refresh-lnk.rotating {
+
+/* 关键：仅让图标触发旋转动画 */
+.refresh-icon.rotating {
     animation: rotate360 0.5s ease-in-out;
 }
+
 @keyframes rotate360 {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
 }
+
 .live-timer-container {
     width: 100%;
     background-color: #5C1315;
