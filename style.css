@@ -404,3 +404,8 @@ body {
 @media (min-width: 415px) {
     body { background-color: #d0cfce; }
 }
+/* 时间栏闪烁效果 */
+.live-timer-flash {
+    background-color: #8C2A2C !important;  /* 比原色 #5C1315 更亮，产生闪一下效果 */
+    transition: background-color 0.1s;
+}
