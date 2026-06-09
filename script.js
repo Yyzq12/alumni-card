@@ -358,7 +358,10 @@ function random() {
     if (DOM.iDepartment) DOM.iDepartment.value = m.dept;
     if (DOM.iMajor) DOM.iMajor.value = m.major;
     if (DOM.iGradYear) DOM.iGradYear.value = y + 4;
-    if (DOM.iCardId) DOM.iCardId.value = `JCCUT${y}0${Math.floor(Math.random() * 80) + 10}`;
+    if (DOM.iCardId) {
+        const randomNum = Math.floor(Math.random() * 900) + 100; // 100-999
+        DOM.iCardId.value = `JCUT1${y}00${randomNum}`;
+    }
 }
 
 // ---------- 复制校友链接（供表格按钮使用）----------
