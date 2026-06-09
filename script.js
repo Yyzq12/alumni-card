@@ -641,12 +641,6 @@ function closePanel() {
 }
 
 // ------------------- 13. 北京时间时钟 + 刷新按钮旋转 -------------------
-function updateClock() {
-    const now = new Date();
-    const beijing = new Date(now.getTime() + now.getTimezoneOffset() * 60000 + 28800000);
-    const str = `${beijing.getFullYear()}年${String(beijing.getMonth()+1).padStart(2,'0')}月${String(beijing.getDate()).padStart(2,'0')}日 ${String(beijing.getHours()).padStart(2,'0')}:${String(beijing.getMinutes()).padStart(2,'0')}:${String(beijing.getSeconds()).padStart(2,'0')}`;
-    if (DOM.liveClockBar) DOM.liveClockBar.innerText = `当前时间：${str}`;
-}
 function triggerManualRefresh() {
     const icon = document.querySelector('.refresh-icon');
     if (icon) {
@@ -656,6 +650,15 @@ function triggerManualRefresh() {
         }, 500);
     }
     updateClock();  // 更新时间显示
+
+    // 时间栏闪烁效果
+    const timerBar = document.getElementById('live-clock-bar');
+    if (timerBar) {
+        timerBar.classList.add('live-timer-flash');
+        setTimeout(() => {
+            timerBar.classList.remove('live-timer-flash');
+        }, 200);  // 闪烁持续200毫秒
+    }
 }
 
 
