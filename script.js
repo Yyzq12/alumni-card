@@ -648,8 +648,25 @@ function updateClock() {
     const clockBar = document.getElementById('live-clock-bar');
     if (clockBar) clockBar.innerText = `当前时间：${str}`;
 }
-    updateClock();  // 更新时间显示
 
+function triggerManualRefresh() {
+    const icon = document.querySelector('.refresh-icon');
+    if (icon) {
+        icon.classList.add('rotating');
+        setTimeout(() => {
+            icon.classList.remove('rotating');
+        }, 500);
+    }
+    updateClock();  // 更新时间
+
+    const timerBar = document.getElementById('live-clock-bar');
+    if (timerBar) {
+        timerBar.classList.add('live-timer-flash');
+        setTimeout(() => {
+            timerBar.classList.remove('live-timer-flash');
+        }, 200);
+    }
+}
     // 时间栏闪烁效果
     const timerBar = document.getElementById('live-clock-bar');
     if (timerBar) {
