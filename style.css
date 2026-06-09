@@ -138,12 +138,12 @@ body {
     color: rgba(255,255,255,0.95);
     white-space: nowrap;
 }
-.info.info-value {
+.info-value {
     font-size: 14.5px;
     color: var(--white) !important;
     white-space: nowrap;
     transition: all 0.2s;
-    letter-spacing: -5px;   /* 添加此行，缩小字符间距 */
+    letter-spacing: -0.5px;   /* 添加此行，缩小字符间距 */
 }
 /* 骨架屏 */
 .skeleton {
