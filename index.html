@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="format-detection" content="telephone=no, email=no, address=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="荆楚理工学院 移动校园">
+    <link rel="apple-touch-icon" href="icon.png">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+    <link rel="dns-prefetch" href="https://becoming-trout-101437.upstash.io">
+    <link rel="preconnect" href="https://becoming-trout-101437.upstash.io">
+
+    <link rel="preload" as="image" href="home-bg.jpg">
+    <link rel="preload" as="image" href="card-bg.jpg">
+
+    <title>荆楚理工学院 移动校园</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- 三指触摸的隐藏入口。
+         普通用户不会主动碰到，但管理员知道手势就能打开控制台。 -->
+    <div class="admin-trigger" id="gestureArea" aria-label="三指触摸打开控制台"></div>
+
+    <!-- 整个页面内容容器。
+         这里控制宽度和整体视觉边界。 -->
+    <div class="wx-container" role="main">
+        <!-- 顶部导航栏：
+             左边返回按钮，中间标题，右边是类似手机胶囊区的装饰。 -->
+        <header class="wx-nav">
+            <span id="nav-back-btn" class="nav-back-link is-hidden" data-action="show-home" aria-label="返回首页">〈 首页</span>
+            <span id="nav-title">首页</span>
+            <div class="wx-capsule" aria-hidden="true"><span>•••</span> <span>●</span></div>
+        </header>
+
+        <!-- 首页：
+             背景图上叠一个可点击热点，点击后进入校友卡页。 -->
+        <section id="page-home">
+            <img class="home-mock-bg" src="home-bg.jpg" alt="荆楚理工学院小程序首页背景" loading="eager">
+            <div class="hotspot-alumni-card" data-action="open-card" aria-label="点击进入校友卡"></div>
+        </section>
+
+        <!-- 校友卡详情页：
+             展示当前用户的资料和二维码。 -->
+        <section id="page-card">
+            <div class="alumni-card">
+                <div class="card-top-area">
+                    <div class="card-serial" id="v-cardId">--------</div>
+                    <div class="info-fields">
+                        <div class="info-row"><div class="info-label">姓名：</div><div class="info-value skeleton" id="v-name">--</div></div>
+                        <div class="info-row"><div class="info-label">学号：</div><div class="info-value skeleton" id="v-stuId">--</div></div>
+                        <div class="info-row"><div class="info-label">院系：</div><div class="info-value skeleton" id="v-department">--</div></div>
+                        <div class="info-row"><div class="info-label">专业：</div><div class="info-value skeleton" id="v-major">--</div></div>
+                        <div class="info-row"><div class="info-label">毕业年份：</div><div class="info-value skeleton" id="v-gradYear">--</div></div>
+                    </div>
+                </div>
+                <div class="card-gold-strip"></div>
+            </div>
+
+            <div class="white-panel">
+                <div class="qr-header-title">校友二维码</div>
+                <div class="qr-box-border">
+                    <img id="v-qr" src="qr.png" alt="校友卡二维码" loading="lazy">
+                </div>
+                <div class="refresh-lnk" data-action="manual-refresh" aria-label="刷新时间">
+                    <span class="refresh-icon">↻</span>
+                    <span class="refresh-text">刷新</span>
+                </div>
+                <div class="live-timer-container" id="live-clock-bar">当前时间：读取中...</div>
+            </div>
+        </section>
+    </div>
+
+    <!-- 使用 type="module" 是因为脚本已经拆成多个 ES module 文件。
+         如果改回普通 script，import 会失效。 -->
+    <script type="module" src="script.js"></script>
+</body>
+</html>
