@@ -1,47 +1,57 @@
 {
-  "01thl": {
-    "name": "唐海林",
-    "stuId": "2016211020115",
-    "cardId": "JCCUT20160893",
-    "department": "医学部",
-    "major": "口腔医学",
-    "gradYear": "2020",
-    "status": "active"
-  },
+  "txl05": {
+  "cardId": "JCUT1201705135",
+  "name": "唐海林",
+  "stuId": "2017105000305",
+  "department": "外国语学院",
+  "major": "外国语言文学",
+  "gradYear": "2021",
+  "activated": false,
+  "deviceId": null,
+  "createdAt": 1780818156954
+},
   "02lx": {
-    "name": "李险",
-    "stuId": "2018408500208",
-    "cardId": "JCCUT201814052",
-    "department": "师范学院",
-    "major": "小学教育",
-    "gradYear": "2022",
-    "status": "active"
-  },
-  "03wxy": {
-    "name": "王皙月",
-    "stuId": "2017305020142",
-    "cardId": "JCCUT201705612",
-    "department": "经济与管理学院",
-    "major": "大数据与会计",
-    "gradYear": "2021",
-    "status": "active"
-  },
+  "cardId": "JCUT1202002548",
+  "name": "李险",
+  "stuId": "2020408500321",
+  "department": "师范学院",
+  "major": "小学教育",
+  "gradYear": "2024",
+  "activated": true,
+  "deviceId": "66d5e4782c07d6b021cffc96fd1a99e8",
+  "createdAt": 1780814085192
+},
+  "xxx39": {
+  "cardId": "JCUT1201600977",
+  "name": "许姝晋",
+  "stuId": "201624207030339",
+  "department": "食品与生物学院",
+  "major": "植物科学与技术",
+  "gradYear": "2020",
+  "activated": true,
+  "deviceId": "61e0dbdda41156b4970b55814134275b",
+  "createdAt": 1781011949472
+},
   "04cly": {
-    "name": "陈路瑶",
-    "stuId": "2016211020324",
-    "cardId": "JCCUT201941250",
-    "department": "经济与管理学院",
-    "major": "财务管理",
-    "gradYear": "2020",
-    "status": "active"
-  },
-  "thl16": {
-    "name": "唐海林",
-    "stuId": "2016305020116",
-    "cardId": "JCCUT2016099",
-    "department": "经济与管理学院",
-    "major": "大数据与会计",
-    "gradYear": "2020",
-    "status": "active"
-  }
+  "cardId": "JCUT1201707236",
+  "name": "程露瑶",
+  "stuId": "201724207030339",
+  "department": "食品与生物学院",
+  "major": "植物科学与技术",
+  "gradYear": "2021",
+  "activated": true,
+  "deviceId": "61e0dbdda41156b4970b55814134275b",
+  "createdAt": 1780814077596
+},
+  "xx0204": {
+  "cardId": "JCUT1200400212",
+  "name": "徐燕",
+  "stuId": "2004408500204",
+  "department": "师范学院",
+  "major": "小学教育",
+  "gradYear": "2008",
+  "activated": true,
+  "deviceId": "3926877de2d7e2fb72496d83a837d7d5",
+  "createdAt": 1781341732943
+}
 }
