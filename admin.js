@@ -4,7 +4,7 @@ import { CONTROL_PASSWORD } from './lib/constants.js';
 import { firstNames, lastNames, jcMajorDatabase, getChinesePinyinInitials } from './lib/catalog.js';
 import { DOM, bindAdminDomRefs, clearAdminDomRefs, reactiveConfig, setCardData, setCardDataValid, setCurrentUserId } from './state.js';
 import { showHome, triggerManualRefresh, showToast, showConfirm } from './ui.js';
-import { redis, loadAlumniTable, resetDeviceLock as resetDeviceLockFromStorage, tryNavigateToCard, copyAlumniLink, deleteAlumniById } from './storage.js';
+import { getUserRecord, loadAlumniTable, resetDeviceLock as resetDeviceLockFromStorage, tryNavigateToCard, copyAlumniLink, deleteAlumniById, saveUserRecord } from './storage.js';
 import { copyTextToClipboard } from './ui.js';
 
 const ADMIN_PANEL_HTML = `
@@ -88,19 +88,19 @@ export async function generate() {
     const copied = await copyTextToClipboard(fullUrl);
 
     if (copied) {
-        showToast('链接已复制到剪贴板，正在后台保存...');
+        showToast('链接已复制到剪贴板，正在保存到本地...');
     } else {
         await showConfirm('自动复制失败，请手动复制下方链接', fullUrl);
     }
 
     (async () => {
         try {
-            const exists = await redis('EXISTS', `user:${shortId}`);
-            if (exists === 1) {
+            const existing = await getUserRecord(shortId);
+            if (existing) {
                 showToast(`短ID "${shortId}" 已存在，链接已复制但无法重复保存`);
                 return;
             }
-            await redis('SET', `user:${shortId}`, JSON.stringify({
+            saveUserRecord(shortId, {
                 cardId,
                 name,
                 stuId,
@@ -110,15 +110,14 @@ export async function generate() {
                 activated: false,
                 deviceId: null,
                 createdAt: Date.now()
-            }));
-            await redis('SADD', 'alumni:index', shortId);
+            });
             setCurrentUserId(shortId);
             setCardDataValid(true);
             setCardData({ cardId, name, stuId, department, major, gradYear });
             showToast(`生成成功！短ID：${shortId}`);
             await loadAlumniTable(true);
         } catch (e) {
-            showToast(`云端保存失败：${e.message}`);
+            showToast(`本地保存失败：${e.message}`);
         }
     })();
 }

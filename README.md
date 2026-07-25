@@ -1,18 +1,18 @@
 # alumni-card
 
 这是一个基于静态页面的校友卡演示项目，入口是 `index.html`。
-当前代码已经拆成多个小模块，方便后续维护和排查问题。
+当前版本已经改成纯前端静态数据，不再依赖云端 Redis。
 
 ## 文件职责
 
 - `script.js`：启动入口，只负责初始化和挂载
 - `state.js`：页面状态、DOM 引用、当前数据
 - `ui.js`：弹窗、吐司、转义、页面切换、时钟等界面逻辑
-- `storage.js`：Redis 读写、设备锁、列表加载、删除和复制链接
+- `storage.js`：静态数据读取、本地覆盖层、设备锁、列表加载、删除和复制链接
 - `admin.js`：控制台、生成链接、随机数据、按钮分发
-- `lib/constants.js`：稳定配置，比如密码和 Redis 地址
+- `lib/constants.js`：稳定配置，比如控制台密码和静态数据入口
 - `lib/catalog.js`：静态目录数据，比如院系、专业、姓名素材
-- `lib/storage.js`：最底层的 Redis HTTP 包装和设备指纹逻辑
+- `lib/storage.js`：设备指纹逻辑
 - `style.css`：页面样式
 - `serve.mjs`：本地预览服务器
 
@@ -28,10 +28,11 @@ alumni-card/
 ├── admin.js
 ├── style.css
 ├── serve.mjs
-├── lib/
-│   ├── constants.js
-│   ├── catalog.js
-│   └── storage.js
+  ├── lib/
+  │   ├── constants.js
+  │   ├── catalog.js
+  │   └── storage.js
+  ├── users.json
 └── 静态资源
     ├── home-bg.jpg
     ├── card-bg.jpg
@@ -85,7 +86,7 @@ http://127.0.0.1:4174/
 - 改页面启动顺序或入口挂载：`script.js`
 - 改页面状态管理：`state.js`
 - 改弹窗、时钟、转义、页面切换：`ui.js`
-- 改 Redis 读写、列表加载、删除、设备锁：`storage.js`
+- 改静态数据读取、本地覆盖、列表加载、删除、设备锁：`storage.js`
 - 改控制台、随机数据、生成链接：`admin.js`
 - 改固定配置或提示文案：`lib/constants.js`
 - 改院系/专业/姓名素材：`lib/catalog.js`
@@ -96,11 +97,12 @@ http://127.0.0.1:4174/
 - 如果看不到更新，先强制刷新一次
 - 如果页面打不开，先确认本地预览服务是否还在运行
 
-## 安全和部署提醒
+## 数据说明
 
-- 当前版本仍然是前端直连 Upstash
-- `lib/constants.js` 里的 token 仍会出现在浏览器源码里
-- 所以这版适合内测、演示、本地预览，不适合公开生产环境
+- `users.json` 是静态校友数据源
+- 页面加载时会先读这个文件，再叠加浏览器本地的新增、激活和删除状态
+- 控制台新增的数据只会写到当前浏览器的本地存储
+- 如果你想让所有人都看到新数据，就需要手动改 `users.json` 并重新 push 到仓库
 - 仓库里的历史旧版入口已经清理掉了，当前主入口只有 `index.html`
 
 ## 说明

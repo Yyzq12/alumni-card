@@ -1,20 +1,167 @@
 'use strict';
 
+import { STATIC_USERS_URL } from './lib/constants.js';
+import { getDeviceId } from './lib/storage.js';
 import { DOM, currentUserId, isCardDataValid, setCardData, setCardDataValid, setCurrentUserId } from './state.js';
 import { showCard, showConfirm, showHome, showSkeleton, showToast, copyTextToClipboard, escapeHtml, escapeAttr } from './ui.js';
-import { redis, getCanvasFingerprint, getDeviceId } from './lib/storage.js';
 
-// 数据层逻辑集中在这里：
-// - 从 URL 加载当前校友卡
-// - 处理设备锁
-// - 读写 Redis
-// - 拉取、缓存、删除管理员列表
-//
-// 这样 UI 层和数据层就不会互相缠绕得太厉害。
-export { redis, getCanvasFingerprint, getDeviceId };
+export { getDeviceId };
 
-const ALUMNI_CACHE_KEY = 'alumni_list_cache';
-const CACHE_TTL = 5 * 60 * 1000;
+const DIRECTORY_CACHE_KEY = 'alumni_directory_cache_v1';
+const LOCAL_STATE_KEY = 'alumni_static_state_v1';
+
+let baseUsersPromise = null;
+
+function isObject(value) {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function createEmptyLocalState() {
+    return { users: {}, deleted: [] };
+}
+
+function readLocalState() {
+    try {
+        const raw = localStorage.getItem(LOCAL_STATE_KEY);
+        if (!raw) return createEmptyLocalState();
+        const parsed = JSON.parse(raw);
+        return {
+            users: isObject(parsed.users) ? parsed.users : {},
+            deleted: Array.isArray(parsed.deleted) ? parsed.deleted : []
+        };
+    } catch (e) {
+        return createEmptyLocalState();
+    }
+}
+
+function writeLocalState(state) {
+    localStorage.setItem(LOCAL_STATE_KEY, JSON.stringify({
+        users: isObject(state.users) ? state.users : {},
+        deleted: Array.isArray(state.deleted) ? Array.from(new Set(state.deleted)) : []
+    }));
+    clearCachedDirectory();
+}
+
+function clearCachedDirectory() {
+    localStorage.removeItem(DIRECTORY_CACHE_KEY);
+}
+
+function readCachedDirectory() {
+    const raw = localStorage.getItem(DIRECTORY_CACHE_KEY);
+    if (!raw) return null;
+    try {
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return null;
+        return parsed;
+    } catch (e) {
+        return null;
+    }
+}
+
+function writeCachedDirectory(list) {
+    localStorage.setItem(DIRECTORY_CACHE_KEY, JSON.stringify(list));
+}
+
+async function loadBaseUsers() {
+    if (!baseUsersPromise) {
+        baseUsersPromise = (async () => {
+            const resp = await fetch(STATIC_USERS_URL, { cache: 'no-store' });
+            if (!resp.ok) {
+                throw new Error(`加载静态校友数据失败：HTTP ${resp.status}`);
+            }
+            const data = await resp.json();
+            if (!isObject(data)) {
+                throw new Error('静态校友数据格式错误');
+            }
+            return data;
+        })().catch((e) => {
+            baseUsersPromise = null;
+            throw e;
+        });
+    }
+    return baseUsersPromise;
+}
+
+function normalizeUser(id, record = {}, fallbackCreatedAt = 0) {
+    const createdAtValue = Number(record.createdAt);
+    const createdAt = Number.isFinite(createdAtValue) ? createdAtValue : fallbackCreatedAt;
+    const activated = record.activated !== undefined ? Boolean(record.activated) : false;
+    return {
+        id,
+        cardId: record.cardId || '--------',
+        name: record.name || '?',
+        stuId: record.stuId || '--',
+        department: record.department || '--',
+        major: record.major || '--',
+        gradYear: record.gradYear || '--',
+        activated,
+        deviceId: record.deviceId ?? null,
+        createdAt,
+        status: record.status || (activated ? 'active' : 'inactive')
+    };
+}
+
+async function buildDirectory() {
+    const baseUsers = await loadBaseUsers();
+    const localState = readLocalState();
+    const deleted = new Set(Array.isArray(localState.deleted) ? localState.deleted : []);
+    const directory = new Map();
+
+    let baseIndex = 0;
+    for (const [id, record] of Object.entries(baseUsers)) {
+        if (deleted.has(id)) continue;
+        directory.set(id, normalizeUser(id, record, 1000000 + baseIndex));
+        baseIndex += 1;
+    }
+
+    for (const [id, record] of Object.entries(localState.users || {})) {
+        if (deleted.has(id)) continue;
+        directory.set(id, normalizeUser(id, record, Number(record.createdAt) || Date.now()));
+    }
+
+    return directory;
+}
+
+async function getDirectoryList(forceRefresh = false) {
+    if (!forceRefresh) {
+        const cached = readCachedDirectory();
+        if (cached) return cached;
+    }
+
+    const directory = await buildDirectory();
+    const list = Array.from(directory.values()).sort((a, b) => {
+        if (b.createdAt !== a.createdAt) return b.createdAt - a.createdAt;
+        return a.id.localeCompare(b.id);
+    });
+    writeCachedDirectory(list);
+    return list;
+}
+
+export async function getUserRecord(id) {
+    if (!id) return null;
+    const directory = await buildDirectory();
+    return directory.get(id) || null;
+}
+
+export function saveUserRecord(id, record) {
+    if (!id) throw new Error('缺少校友短 ID');
+    const state = readLocalState();
+    state.users[id] = normalizeUser(id, { ...record, id }, Number(record?.createdAt) || Date.now());
+    state.deleted = (state.deleted || []).filter((item) => item !== id);
+    writeLocalState(state);
+}
+
+export function deleteUserRecord(id) {
+    if (!id) throw new Error('缺少校友短 ID');
+    const state = readLocalState();
+    if (state.users && state.users[id]) {
+        delete state.users[id];
+    }
+    if (!state.deleted.includes(id)) {
+        state.deleted.push(id);
+    }
+    writeLocalState(state);
+}
 
 export async function tryNavigateToCard() {
     // 点击首页热点后进入这里。
@@ -26,14 +173,13 @@ export async function tryNavigateToCard() {
     const uid = currentUserId;
     const deviceId = await getDeviceId();
     try {
-        const raw = await redis('GET', `user:${uid}`);
-        if (!raw) {
+        const userData = await getUserRecord(uid);
+        if (!userData) {
             showToast('未找到该校友卡');
             return;
         }
-        const userData = JSON.parse(raw);
         if (userData.activated) {
-            if (userData.deviceId !== deviceId) {
+            if (userData.deviceId && userData.deviceId !== deviceId) {
                 showToast('设备验证失败，该校友卡已在其他设备绑定');
                 return;
             }
@@ -42,9 +188,13 @@ export async function tryNavigateToCard() {
         }
         const ok = await showConfirm('点击"确定"后，此校友卡将与当前设备绑定，他人将无法使用，是否确认绑定。', '欢迎使用校友卡');
         if (ok) {
-            userData.activated = true;
-            userData.deviceId = deviceId;
-            await redis('SET', `user:${uid}`, JSON.stringify(userData));
+            const nextUserData = {
+                ...userData,
+                activated: true,
+                deviceId
+            };
+            saveUserRecord(uid, nextUserData);
+            setCardData(nextUserData);
             showCard();
         }
     } catch (e) {
@@ -60,12 +210,16 @@ export async function resetDeviceLock() {
         return;
     }
     try {
-        const raw = await redis('GET', `user:${currentUserId}`);
-        if (raw) {
-            const userData = JSON.parse(raw);
-            userData.activated = false;
-            userData.deviceId = null;
-            await redis('SET', `user:${currentUserId}`, JSON.stringify(userData));
+        const userData = await getUserRecord(currentUserId);
+        if (userData) {
+            const nextUserData = {
+                ...userData,
+                activated: false,
+                deviceId: null
+            };
+            saveUserRecord(currentUserId, nextUserData);
+            setCardData(nextUserData);
+            setCardDataValid(true);
             showToast(`已解除 ${currentUserId} 的设备锁`);
         }
     } catch (e) {
@@ -83,9 +237,8 @@ export async function load() {
     setCurrentUserId(id);
     showSkeleton(true);
     try {
-        const raw = await redis('GET', `user:${id}`);
-        if (raw) {
-            const userData = JSON.parse(raw);
+        const userData = await getUserRecord(id);
+        if (userData) {
             setCardData(userData);
             setCardDataValid(true);
         } else {
@@ -101,27 +254,6 @@ export async function load() {
     }
 }
 
-function getCachedAlumniList() {
-    // localStorage 里的列表只是缓存，不是主数据。
-    // 过期就重新向 Redis 拉，避免后台数据变更后前台还显示旧内容。
-    const cached = localStorage.getItem(ALUMNI_CACHE_KEY);
-    if (!cached) return null;
-    try {
-        const { data, timestamp } = JSON.parse(cached);
-        if (Date.now() - timestamp < CACHE_TTL) {
-            return Array.isArray(data) ? data : null;
-        }
-    } catch (e) {
-        // ignore malformed cache
-    }
-    return null;
-}
-
-function saveCachedAlumniList(data) {
-    // 统一缓存写入格式，方便以后调试和扩展。
-    localStorage.setItem(ALUMNI_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
-}
-
 export async function loadAlumniTable(forceRefresh = false) {
     // 管理面板中的校友表格。
     // 这里同时负责：
@@ -131,50 +263,7 @@ export async function loadAlumniTable(forceRefresh = false) {
     // - 渲染 HTML
     if (!DOM.alumniTableContainer || !DOM.alumniHeader) return;
     try {
-        let alumniList = null;
-        if (!forceRefresh) {
-            alumniList = getCachedAlumniList();
-        }
-
-        if (!alumniList) {
-            // 先走索引集合 alumni:index。
-            // 如果老数据还没建索引，再回退到 KEYS 做兼容。
-            let ids = await redis('SMEMBERS', 'alumni:index');
-            if (!ids || ids.length === 0) {
-                const allKeys = await redis('KEYS', 'user:*');
-                ids = (allKeys || []).map((key) => key.replace('user:', ''));
-            }
-
-            if (!ids || ids.length === 0) {
-                DOM.alumniHeader.textContent = '共 0 位校友';
-                DOM.alumniTableContainer.innerHTML = '<div class="alumni-empty">暂无校友数据</div>';
-                return;
-            }
-
-            const batchSize = 50;
-            const list = [];
-            for (let i = 0; i < ids.length; i += batchSize) {
-                // 批量分片读取，避免一次性请求过大。
-                const batchIds = ids.slice(i, i + batchSize);
-                const userKeys = batchIds.map((id) => `user:${id}`);
-                const vals = await redis('MGET', ...userKeys);
-                for (let j = 0; j < batchIds.length; j += 1) {
-                    const user = JSON.parse(vals[j] || '{}');
-                    list.push({
-                        id: batchIds[j],
-                        name: user.name || '?',
-                        major: user.major || '—',
-                        activated: user.activated || false,
-                        createdAt: user.createdAt || 0
-                    });
-                }
-            }
-            alumniList = list.sort((a, b) => b.createdAt - a.createdAt);
-            saveCachedAlumniList(alumniList);
-        } else {
-            alumniList.sort((a, b) => b.createdAt - a.createdAt);
-        }
-
+        const alumniList = await getDirectoryList(forceRefresh);
         DOM.alumniHeader.textContent = `共 ${alumniList.length} 位校友`;
         if (alumniList.length === 0) {
             DOM.alumniTableContainer.innerHTML = '<div class="alumni-empty">暂无校友数据</div>';
@@ -196,7 +285,7 @@ export async function loadAlumniTable(forceRefresh = false) {
 
         for (const item of alumniList) {
             // 注意：这里所有可变文本都必须转义。
-            // 否则只要 Redis 中有恶意字符串，就可能在页面里执行 HTML/JS。
+            // 否则只要数据源里有恶意字符串，就可能在页面里执行 HTML/JS。
             const statusIcon = item.activated ? '🟢' : '🔴';
             let displayName = item.name || '?';
             if (displayName.length === 2) displayName = `${displayName[0]}　${displayName[1]}`;
@@ -241,9 +330,8 @@ export async function deleteAlumniById(id) {
     // 删除前先查询名字，弹窗提示会更友好，也更不容易误删。
     let name = id;
     try {
-        const raw = await redis('GET', `user:${id}`);
-        if (raw) {
-            const userData = JSON.parse(raw);
+        const userData = await getUserRecord(id);
+        if (userData) {
             name = userData.name || id;
         }
     } catch (e) {
@@ -254,12 +342,8 @@ export async function deleteAlumniById(id) {
     if (!confirmed) return;
 
     try {
-        // 删除主记录之后，别忘了同步移除索引集合。
-        // 否则列表会留下“空引用”。
-        await redis('DEL', `user:${id}`);
-        await redis('SREM', 'alumni:index', id);
-        localStorage.removeItem(ALUMNI_CACHE_KEY);
-        showToast(`已删除校友 ${name}`);
+        deleteUserRecord(id);
+        showToast(`已从本地目录移除校友 ${name}`);
         await loadAlumniTable(true);
     } catch (e) {
         showToast(`删除失败：${e.message}`);
