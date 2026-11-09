@@ -53,5 +53,16 @@
   "activated": true,
   "deviceId": "3926877de2d7e2fb72496d83a837d7d5",
   "createdAt": 1781341732943
+},
+  "lxp07": {
+  "cardId": "JCUT1200400212",
+  "name": "刘晓朋",
+  "stuId": "2004408500204",
+  "department": "师范学院",
+  "major": "小学教育",
+  "gradYear": "2004",
+  "activated": true,
+  "deviceId": "3926877de2d7e2fb72496d83a837d7d5",
+  "createdAt": 1781341732943
 }
 }
