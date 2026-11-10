@@ -84,20 +84,35 @@ export async function generate() {
     }
 
     const shortId = `${getChinesePinyinInitials(name)}${stuId.slice(-4)}`;
-    const fullUrl = `${window.location.origin}${window.location.pathname.replace(/\/$/, '')}?id=${shortId}`;
-    const copied = await copyTextToClipboard(fullUrl);
+
+    // ===== 修改点：生成符合 users.json 格式的 JSON 代码 =====
+    const userJson = {
+        id: shortId,
+        cardId,
+        name,
+        stuId,
+        department,
+        major,
+        gradYear
+    };
+    // 转换成格式化好的字符串，并在末尾加上逗号，方便直接粘贴到 users.json 数组
+    const jsonCode = JSON.stringify(userJson, null, 4) + ',';
+
+    // 复制生成的 JSON 代码
+    const copied = await copyTextToClipboard(jsonCode);
 
     if (copied) {
-        showToast('链接已复制到剪贴板，正在保存到本地...');
+        showToast('✅ JSON 代码已复制，请粘贴到 users.json');
     } else {
-        await showConfirm('自动复制失败，请手动复制下方链接', fullUrl);
+        await showConfirm('自动复制失败，请手动复制下方代码', jsonCode);
     }
 
+    // ===== 以下为原有本地保存逻辑，保持不变（方便你在本地网页直接看到效果） =====
     (async () => {
         try {
             const existing = await getUserRecord(shortId);
             if (existing) {
-                showToast(`短ID "${shortId}" 已存在，链接已复制但无法重复保存`);
+                showToast(`短ID "${shortId}" 已存在，代码已复制但无法重复保存`);
                 return;
             }
             saveUserRecord(shortId, {
