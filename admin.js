@@ -84,30 +84,33 @@ export async function generate() {
     }
 
     const shortId = `${getChinesePinyinInitials(name)}${stuId.slice(-4)}`;
+    const now = Date.now();
 
-    // ===== 修改点：生成符合 users.json 格式的 JSON 代码 =====
-    const userJson = {
-        id: shortId,
-        cardId,
-        name,
-        stuId,
-        department,
-        major,
-        gradYear
-    };
-    // 转换成格式化好的字符串，并在末尾加上逗号，方便直接粘贴到 users.json 数组
-    const jsonCode = JSON.stringify(userJson, null, 4) + ',';
+    // ===== 修改点：首行为 }, 并且为未激活状态 =====
+    // 注意这里最后是没有逗号的，方便你直接贴到最后一行闭合外层结构
+    const jsonCode = `  },
+  "${shortId}": {
+    "cardId": "${cardId}",
+    "name": "${name}",
+    "stuId": "${stuId}",
+    "department": "${department}",
+    "major": "${major}",
+    "gradYear": "${gradYear}",
+    "activated": false,
+    "deviceId": null,
+    "createdAt": ${now}
+  }`;
 
-    // 复制生成的 JSON 代码
+    // 复制生成的代码
     const copied = await copyTextToClipboard(jsonCode);
 
     if (copied) {
-        showToast('✅ JSON 代码已复制，请粘贴到 users.json');
+        showToast('✅ 代码已复制，请替换 users.json 最后的 }');
     } else {
         await showConfirm('自动复制失败，请手动复制下方代码', jsonCode);
     }
 
-    // ===== 以下为原有本地保存逻辑，保持不变（方便你在本地网页直接看到效果） =====
+    // ===== 以下为原有本地保存逻辑（同步保持未激活） =====
     (async () => {
         try {
             const existing = await getUserRecord(shortId);
@@ -124,7 +127,7 @@ export async function generate() {
                 gradYear,
                 activated: false,
                 deviceId: null,
-                createdAt: Date.now()
+                createdAt: now
             });
             setCurrentUserId(shortId);
             setCardDataValid(true);
