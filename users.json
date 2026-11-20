@@ -64,5 +64,13 @@
   "activated": true,
   "deviceId": "3926877de2d7e2fb72496d83a837d7d5",
   "createdAt": 1781341732943
-}
+},
+  "id": "xx0216",
+  "cardId": "JCUT1201600848",
+  "name": "谢威",
+  "stuId": "2012408500216",
+  "department": "师范学院",
+  "major": "小学教育",
+  "gradYear": "2016"
+},
 }
