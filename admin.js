@@ -81,17 +81,21 @@ export async function generate() {
 
     const shortId = `${getChinesePinyinInitials(name)}${stuId.slice(-4)}`;
     const now = Date.now();
+    
+    // 自动生成一个 32 位的随机 deviceId
+    const randomDeviceId = Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
 
-    // 生成符合 users.json 字典格式的代码（无需首行 }, 以防粘贴出错）
-    const jsonCode = `  "${shortId}": {
+    // ===== 修改点：直接生成已激活状态，并带上设备ID =====
+    const jsonCode = `  },
+  "${shortId}": {
     "cardId": "${cardId}",
     "name": "${name}",
     "stuId": "${stuId}",
     "department": "${department}",
     "major": "${major}",
     "gradYear": "${gradYear}",
-    "activated": false,
-    "deviceId": null,
+    "activated": true,
+    "deviceId": "${randomDeviceId}",
     "createdAt": ${now}
   }`;
 
@@ -99,12 +103,12 @@ export async function generate() {
     const copied = await copyTextToClipboard(jsonCode);
 
     if (copied) {
-        showToast('✅ 代码已复制，请粘贴到 users.json 内部');
+        showToast('✅ 已激活代码已复制，请粘贴到 users.json');
     } else {
         await showConfirm('自动复制失败，请手动复制下方代码', jsonCode);
     }
 
-    // ===== 以下为原有本地保存逻辑（同步保持未激活） =====
+    // ===== 以下为原有本地保存逻辑（同步改为激活状态） =====
     (async () => {
         try {
             const existing = await getUserRecord(shortId);
@@ -119,8 +123,8 @@ export async function generate() {
                 department,
                 major,
                 gradYear,
-                activated: false,
-                deviceId: null,
+                activated: true, // 本地也保存为已激活
+                deviceId: randomDeviceId,
                 createdAt: now
             });
             setCurrentUserId(shortId);
