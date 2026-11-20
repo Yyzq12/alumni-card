@@ -32,8 +32,6 @@ const ADMIN_PANEL_HTML = `
 `;
 
 function random() {
-    // 随机生成一组“看起来像真的”测试数据。
-    // 这个功能主要是为了快速演示，方便用户不用手工填每个字段。
     const year = Math.floor(Math.random() * 5) + 2016;
     const major = jcMajorDatabase[Math.floor(Math.random() * jcMajorDatabase.length)];
     const sid = `${year}${major.code}${String(Math.floor(Math.random() * 3) + 1).padStart(2, '0')}${String(Math.floor(Math.random() * 40) + 1).padStart(2, '0')}`;
@@ -41,8 +39,6 @@ function random() {
     const randomNum = Math.floor(Math.random() * 900) + 100;
     const cardId = `JCUT1${year}00${randomNum}`;
 
-    // 直接写入 reactiveConfig，保证“随机生成”后的数据就是当前真值。
-    // 这样后面只改一个字段时，其他字段不会被 updateUI 用旧默认值覆盖掉。
     setCardData({
         cardId,
         name: randomName,
@@ -86,10 +82,8 @@ export async function generate() {
     const shortId = `${getChinesePinyinInitials(name)}${stuId.slice(-4)}`;
     const now = Date.now();
 
-    // ===== 修改点：首行为 }, 并且为未激活状态 =====
-    // 注意这里最后是没有逗号的，方便你直接贴到最后一行闭合外层结构
-    const jsonCode = `  },
-  "${shortId}": {
+    // 生成符合 users.json 字典格式的代码（无需首行 }, 以防粘贴出错）
+    const jsonCode = `  "${shortId}": {
     "cardId": "${cardId}",
     "name": "${name}",
     "stuId": "${stuId}",
@@ -105,7 +99,7 @@ export async function generate() {
     const copied = await copyTextToClipboard(jsonCode);
 
     if (copied) {
-        showToast('✅ 代码已复制，请替换 users.json 最后的 }');
+        showToast('✅ 代码已复制，请粘贴到 users.json 内部');
     } else {
         await showConfirm('自动复制失败，请手动复制下方代码', jsonCode);
     }
