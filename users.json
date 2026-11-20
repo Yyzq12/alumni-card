@@ -17,8 +17,8 @@
     "department": "师范学院",
     "major": "小学教育",
     "gradYear": "2024",
-    "activated": true,
-    "deviceId": "66d5e4782c07d6b021cffc96fd1a99e8",
+    "activated": false,
+    "deviceId": null,
     "createdAt": 1780814085192
   },
   "xxx39": {
@@ -28,8 +28,8 @@
     "department": "食品与生物学院",
     "major": "植物科学与技术",
     "gradYear": "2020",
-    "activated": true,
-    "deviceId": "61e0dbdda41156b4970b55814134275b",
+    "activated": false,
+    "deviceId": null,
     "createdAt": 1781011949472
   },
   "04cly": {
@@ -39,8 +39,8 @@
     "department": "食品与生物学院",
     "major": "植物科学与技术",
     "gradYear": "2021",
-    "activated": true,
-    "deviceId": "61e0dbdda41156b4970b55814134275b",
+    "activated": false,
+    "deviceId": null,
     "createdAt": 1780814077596
   },
   "xx0204": {
@@ -50,8 +50,8 @@
     "department": "师范学院",
     "major": "小学教育",
     "gradYear": "2008",
-    "activated": true,
-    "deviceId": "3926877de2d7e2fb72496d83a837d7d5",
+    "activated": false,
+    "deviceId": null,
     "createdAt": 1781341732943
   },
   "lxp07": {
@@ -61,9 +61,9 @@
     "department": "师范学院",
     "major": "小学教育",
     "gradYear": "2004",
-    "activated": true,
-    "deviceId": "3926877de2d7e2fb72496d83a837d7d5",
-    "createdAt": 1781341780294
+    "activated": false,
+    "deviceId": null,
+    "createdAt": 1781341732943
   },
   "xx0216": {
     "cardId": "JCUT1200400213",
@@ -72,8 +72,8 @@
     "department": "师范学院",
     "major": "小学教育",
     "gradYear": "2014",
-    "activated": true,
-    "deviceId": "3926877de2d7e2fb72496d83a837d7d5",
-    "createdAt": 1781341752963
+    "activated": false,
+    "deviceId": null,
+    "createdAt": 1781341732943
   }
 }
